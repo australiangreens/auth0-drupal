@@ -1,5 +1,5 @@
 {
-    "name": "auth0/auth0_drupal",
+    "name": "australian_greens/auth0_drupal",
     "require": {
         "auth0/auth0-php": "^5.0",
         "firebase/php-jwt": "^4.0"
