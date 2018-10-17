@@ -1,12 +1,17 @@
 {
     "name": "australian_greens/auth0_drupal",
+    "type": "drupal-module",
     "require": {
         "auth0/auth0-php": "^5.0",
-        "firebase/php-jwt": "^4.0"
+        "firebase/php-jwt": "^4.0",
+        "composer/installers": "~1.0"
     },
     "authors": [
         {
             "name": "Auth0"
         }
-    ]
+    ],
+    "extra": {
+        "installer-name": "auth0"
+    }
 }
