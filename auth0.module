@@ -1238,7 +1238,7 @@ function getDomain() {
   $domain = check_plain(variable_get('auth0_domain', ''));
   $custom_domain = check_plain(variable_get('auth0_custom_domain', ''));
 
-  return isset($custom_domain) ? $custom_domain : $domain;
+  return isset($custom_domain) && !empty($custom_domain) ? $custom_domain : $domain;
 }
 /**
  * Implements hook_user_presave().
