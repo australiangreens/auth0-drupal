@@ -389,7 +389,7 @@ function auth0_login_auth0_user($user_info, $id_token) {
     else {
       // If we are here, we need to create the user.
       // Check drupal settings to see if new users are allowed to register.
-      if (variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_ADMINISTRATORS_ONLY) {
+      if (!variable_get('auth0_user_push', FALSE) && variable_get('user_register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL) == USER_REGISTER_ADMINISTRATORS_ONLY) {
         return drupal_set_message(t('Only site administrators can create new user accounts.'), 'error');
       }
       else {
