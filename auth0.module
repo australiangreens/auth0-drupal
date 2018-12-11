@@ -1277,6 +1277,7 @@ function auth0_user_presave(&$edit, $account, $category) {
           'email' => $account->mail,
           'password' => user_password() . '!',  // Satisfy Auth0 password policy
           'email_verified' => TRUE,
+          'nickname' => $account->name,
           'app_metadata' => json_decode(variable_get('auth0_user_push_app_metadata', ''), true)
         ));
 
