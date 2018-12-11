@@ -277,7 +277,9 @@ function auth0_callback() {
       return drupal_goto();
     }
 
-    function_exists('dd') && dd('Good Login');
+    function_exists('dd') && dd(var_export($user_info, TRUE), 'Good Login');
+    function_exists('dd') && dd(var_export($_GET, TRUE), 'From');
+
     $success = auth0_login_auth0_user($user_info, $id_token);
   }
 
@@ -1253,6 +1255,8 @@ function auth0_user_presave(&$edit, $account, $category) {
   if (variable_get('auth0_user_push', FALSE) && isset($connection) && !isset($account->data['auth0_id'])) {
 
     if (isset($account->is_new) && !empty($account->is_new)) {
+
+      function_exists('dd') && dd(var_export($account, TRUE), 'Pushing to Auth0');
 
       // Create the user in Auth0 with a DB connection
       try {
