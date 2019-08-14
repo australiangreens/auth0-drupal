@@ -1253,6 +1253,11 @@ function auth0_user_presave(&$edit, $account, $category) {
   }
   $connection = variable_get('auth0_user_push_connection', '');
 
+  watchdog('auth0', 'user_presave_called with variables @edit, @account', [
+   '@edit' => json_encode($edit),
+   '@account' => var_dump($account),
+  ], WATCHDOG_DEBUG);
+
   // skip if the user create came from Auth0, is not new or if push disabled.
 
   if (variable_get('auth0_user_push', FALSE) && isset($connection) && !isset($account->data['auth0_id'])) {
