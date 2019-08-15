@@ -1314,7 +1314,7 @@ function auth0_user_presave(&$edit, $account, $category) {
             'response_type' => 'code'
           );
 
-          $link_result = $auth0->email_passwordless_start($account->mail, 'link', $authParams);
+          $link_result = $auth0->email_passwordless_start($mail, 'link', $authParams);
 
           drupal_set_message(t('An Email with a one-time link has been sent.'), 'status');
         }
