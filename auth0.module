@@ -1248,6 +1248,9 @@ function getDomain() {
  * Create the user in Auth0
  */
 function auth0_user_presave(&$edit, $account, $category) {
+  if (!auth0_check_dependencies()) {
+    return;
+  }
   $connection = variable_get('auth0_user_push_connection', '');
 
   // skip if the user create came from Auth0, is not new or if push disabled.
@@ -1276,12 +1279,25 @@ function auth0_user_presave(&$edit, $account, $category) {
 
         $mgmtClient = new Management($access_token, $domain);
 
+        $fields = ['mail', 'name'];
+        foreach ($fields as $field) {
+          if (isset($account->$field) && !empty($account->$field)) {
+            $$field = $account->$field;
+          }
+          elseif (!empty($edit[$field])) {
+            $$field = $edit[$field];
+          }
+          else {
+            $$field = NULL;
+          }
+        }
+
         $api_result = $mgmtClient->users->create(array(
           'connection' => $connection,
-          'email' => $account->mail,
+          'email' => $mail,
           'password' => user_password() . '!',  // Satisfy Auth0 password policy
           'email_verified' => TRUE,
-          'nickname' => $account->name,
+          'nickname' => $name,
           'app_metadata' => json_decode(variable_get('auth0_user_push_app_metadata', ''), true)
         ));
 
@@ -1298,7 +1314,7 @@ function auth0_user_presave(&$edit, $account, $category) {
             'response_type' => 'code'
           );
 
-          $link_result = $auth0->email_passwordless_start($account->mail, 'link', $authParams);
+          $link_result = $auth0->email_passwordless_start($mail, 'link', $authParams);
 
           drupal_set_message(t('An Email with a one-time link has been sent.'), 'status');
         }
