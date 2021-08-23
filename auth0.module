@@ -212,7 +212,7 @@ function auth0_callback() {
       'client_secret' => $client_secret,
       'redirect_uri' => url('auth0/callback', array('absolute' => TRUE)),
       'store' => NULL, // Set to null so that the store is set to SessionStore.
-      'persist_id_token' => FALSE,
+      'persist_id_token' => TRUE,
       'persist_user' => FALSE,
       'persist_access_token' => FALSE,
       'persist_refresh_token' => FALSE    
