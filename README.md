@@ -1,4 +1,4 @@
-Drupal 8 Module for Auth0
+Drupal 8/9 Module for Auth0
 ====
 
 ## NOTICE
@@ -8,8 +8,10 @@ The Auth0 Community is in the process of deprecating this library, and the repos
 ### Alternative Solution
 An alternative solution could possibly be Drupal as it now can support OIDC via a Drupal Module. This will likely change the user experience if you are currently leveraging auth0-drupal in your project but does give another option to explore. Find out more at [Drupal OpenID Connect / OAuth client](https://www.drupal.org/project/openid_connect). 
 
-## Drupal 8 Details
-This plugin replaces standard Drupal 8 login forms with one powered by Auth0 that enables social, passwordless, and enterprise connection login as well as additional security, multifactor auth, and user statistics.
+## Drupal 8/9 Details
+This plugin replaces standard Drupal 8/9 login forms with one powered by Auth0 that enables social, passwordless, and enterprise connection login as well as additional security, multifactor auth, and user statistics.
+
+Drupal 9 compatibility exists only in the Australian Greens fork of the module, and only on tagged releases numbered `9.x-3.x.x`.
 
 Drupal 7 is supported only on v1. If you want to contribute to the codebase, please push your PRs against the `1.x.x` branch. Note that this branch is not regularly maintained.
 
