@@ -13,5 +13,10 @@
     ],
     "extra": {
         "installer-name": "auth0"
+    },
+    "config": {
+      "platform": {
+         "php": "7.3"
+      }
     }
 }
