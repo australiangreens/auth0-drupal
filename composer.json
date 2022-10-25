@@ -4,7 +4,7 @@
     "license": "MIT",
     "description": "Single Sign On for Enterprises + Social Login + User/Passwords. For all your Drupal instances. Powered by Auth0.",
     "require": {
-        "auth0/auth0-php": "^7.9"
+        "auth0/auth0-php": "^8.3"
     },
     "require-dev": {
         "composer/installers": "^1.9",

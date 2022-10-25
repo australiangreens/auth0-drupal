@@ -22,6 +22,7 @@ use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
 
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -35,7 +36,8 @@ use Drupal\auth0\Util\AuthHelper;
 
 use Auth0\SDK\Auth0;
 use Auth0\SDK\API\Authentication;
-use Auth0\SDK\Helpers\TransientStoreHandler;
+use Auth0\SDK\Configuration\SdkConfiguration;
+use Auth0\SDK\Utility\TransientStoreHandler;
 use Auth0\SDK\Store\SessionStore;
 use GuzzleHttp\ClientInterface;
 use Psr\Log\LoggerInterface;
@@ -53,6 +55,7 @@ class AuthController extends ControllerBase {
   const AUTH0_DOMAIN = 'auth0_domain';
   const AUTH0_CLIENT_ID = 'auth0_client_id';
   const AUTH0_CLIENT_SECRET = 'auth0_client_secret';
+  const AUTH0_COOKIE_SECRET = 'auth0_cookie_secret';
   const AUTH0_REDIRECT_FOR_SSO = 'auth0_redirect_for_sso';
   const AUTH0_JWT_SIGNING_ALGORITHM = 'auth0_jwt_signature_alg';
   const AUTH0_SECRET_ENCODED = 'auth0_secret_base64_encoded';
@@ -129,6 +132,13 @@ class AuthController extends ControllerBase {
   protected bool $offlineAccess;
 
   /**
+   * The Auth0 cookie secret.
+   *
+   * @var string|null
+   */
+  protected ?string $cookieSecret;
+
+  /**
    * The Auth0 helper.
    *
    * @var \Drupal\auth0\Util\AuthHelper
@@ -157,6 +167,13 @@ class AuthController extends ControllerBase {
   protected Connection $database;
 
   /**
+   * Current Request.
+   *
+   * @var \Symfony\Component\HttpFoundation\Request|null
+   */
+  protected Request $currentRequest;
+
+  /**
    * Initialize the controller.
    *
    * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
@@ -177,6 +194,8 @@ class AuthController extends ControllerBase {
    *   The http client.
    * @param \Drupal\Core\Database\Connection $database
    *   Database Connection.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   Request Stack.
    */
   final public function __construct(
     PrivateTempStoreFactory $temp_store_factory,
@@ -187,7 +206,8 @@ class AuthController extends ControllerBase {
     ConfigFactoryInterface $config_factory,
     AuthHelper $auth0_helper,
     ClientInterface $http_client,
-    Connection $database
+    Connection $database,
+    RequestStack $request_stack
   ) {
     $this->database = $database;
     $this->helper = $auth0_helper;
@@ -207,17 +227,23 @@ class AuthController extends ControllerBase {
     $this->config = $config_factory->get('auth0.settings');
     $this->clientId = $this->config->get(AuthController::AUTH0_CLIENT_ID);
     $this->clientSecret = $this->config->get(AuthController::AUTH0_CLIENT_SECRET);
+    $this->cookieSecret = $this->config->get(AuthController::AUTH0_COOKIE_SECRET);
     $this->redirectForSso = (bool) $this->config->get(AuthController::AUTH0_REDIRECT_FOR_SSO);
     $this->offlineAccess = (bool) $this->config->get(AuthController::AUTH0_OFFLINE_ACCESS);
-    $this->auth0 = new Auth0([
-      'domain'        => $this->helper->getAuthDomain(),
-      'client_id'     => $this->clientId,
-      'client_secret' => $this->clientSecret,
-      'redirect_uri'  => "$base_url/auth0/callback",
-      'persist_user' => FALSE,
-      'transient_store' => new SessionStore(),
-    ]);
+    $this->currentRequest = $request_stack->getCurrentRequest();
 
+    $sdk_configuration = new SdkConfiguration([
+      'domain'        => $this->helper->getAuthDomain(),
+      'clientId'     => $this->clientId,
+      'clientSecret' => $this->clientSecret,
+      'cookieSecret' => $this->cookieSecret,
+      'redirectUri'  => "$base_url/auth0/callback",
+      'persistUser' => FALSE,
+    ]);
+    $transient_store = new SessionStore($sdk_configuration);
+    $sdk_configuration->setTransientStorage($transient_store);
+
+    $this->auth0 = new Auth0($sdk_configuration);
   }
 
   /**
@@ -225,15 +251,16 @@ class AuthController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-        $container->get('tempstore.private'),
-        $container->get('session_manager'),
-        $container->get('page_cache_kill_switch'),
-        $container->get('logger.factory'),
-        $container->get('event_dispatcher'),
-        $container->get('config.factory'),
-        $container->get('auth0.helper'),
-        $container->get('http_client'),
-        $container->get('database')
+      $container->get('tempstore.private'),
+      $container->get('session_manager'),
+      $container->get('page_cache_kill_switch'),
+      $container->get('logger.factory'),
+      $container->get('event_dispatcher'),
+      $container->get('config.factory'),
+      $container->get('auth0.helper'),
+      $container->get('http_client'),
+      $container->get('database'),
+      $container->get('request_stack')
     );
   }
 
@@ -259,7 +286,7 @@ class AuthController extends ControllerBase {
 
     // If supporting SSO, redirect to the hosted login page for authorization.
     if ($this->redirectForSso) {
-      return new TrustedRedirectResponse($this->buildAuthorizeUrl());
+      return new TrustedRedirectResponse($this->auth0->login($returnTo));
     }
 
     // Not doing SSO, so show login page.
@@ -297,17 +324,14 @@ class AuthController extends ControllerBase {
    *   The response after logout.
    */
   public function logout() {
-    global $base_url;
-
-    $auth0Api = new Authentication($this->helper->getAuthDomain(), $this->clientId);
+    $auth0Api = new Authentication($this->auth0->configuration());
 
     user_logout();
 
     // If we are using SSO, we need to logout completely from Auth0,
     // otherwise they will just logout of their client.
-    return new TrustedRedirectResponse($auth0Api->get_logout_link(
-      $base_url,
-      $this->redirectForSso ? NULL : $this->clientId
+    return new TrustedRedirectResponse($auth0Api->getLogoutLink(
+      $this->currentRequest->getSchemeAndHttpHost()
     ));
   }
 
@@ -328,7 +352,7 @@ class AuthController extends ControllerBase {
       $this->sessionManager->regenerate();
     }
 
-    $transientStoreHandler = new TransientStoreHandler(new SessionStore());
+    $transientStoreHandler = new TransientStoreHandler(new SessionStore($this->auth0->configuration()));
     $states = $this->tempStore->get(AuthController::STATE);
     if (!is_array($states)) {
       $states = [];
@@ -354,35 +378,11 @@ class AuthController extends ControllerBase {
       $this->sessionManager->regenerate();
     }
 
-    $transientStoreHandler = new TransientStoreHandler(new SessionStore());
-
+    $transientStoreHandler = new TransientStoreHandler(new SessionStore($this->auth0->configuration()));
     $nonce = $transientStoreHandler->issue('nonce');
+    $this->tempStore->set('nonce', $nonce);
 
     return $nonce;
-  }
-
-  /**
-   * Build the Authorize url.
-   *
-   * @return string
-   *   The URL to redirect to for authorization.
-   */
-  protected function buildAuthorizeUrl() {
-    global $base_root;
-
-    $redirect_uri = "$base_root/auth0/callback";
-
-    $params = [
-      'scope' => AUTH0_DEFAULT_SCOPES,
-      'response_type' => 'code',
-      'redirect_uri' => $redirect_uri,
-    ];
-
-    if ($this->offlineAccess) {
-      $params['scope'] .= ' offline_access';
-    }
-
-    return $this->auth0->getLoginUrl();
   }
 
   /**
@@ -407,7 +407,7 @@ class AuthController extends ControllerBase {
       'consent_required',
     ];
     if ($error_code && in_array($error_code, $redirect_errors)) {
-      return new TrustedRedirectResponse($this->buildAuthorizeUrl());
+      return new TrustedRedirectResponse($this->auth0->login());
     }
     elseif ($error_code) {
       $error_desc = $request->query->get('error_description', $request->request->get('error_description', $error_code));
@@ -437,11 +437,11 @@ class AuthController extends ControllerBase {
       return $response;
     }
 
-    $userInfo = NULL;
     $refreshToken = NULL;
 
     // Exchange the code for the tokens (happens behind the scenes in the SDK).
     try {
+      $this->auth0->exchange();
       $userInfo = $this->auth0->getUser();
       $idToken = $this->auth0->getIdToken();
     }
@@ -463,7 +463,7 @@ class AuthController extends ControllerBase {
     }
 
     try {
-      $user = $this->auth0->decodeIdToken($idToken);
+      $user = $this->auth0->decode($idToken);
     }
     catch (\Exception $e) {
       return $this->failLogin($problem_logging_in_msg, $this->t('Failed to validate JWT: @exception', ['@exception' => $e->getMessage()]));
@@ -486,13 +486,13 @@ class AuthController extends ControllerBase {
         $userInfo['user_id'] = $userInfo['sub'];
       }
 
-      if ($userInfo['sub'] != $user['sub']) {
+      if ($userInfo['sub'] != $user->getSubject()) {
         return $this->failLogin($problem_logging_in_msg, $this->t('Failed to verify JWT sub'));
       }
 
       $this->auth0Logger->notice('Good Login');
 
-      return $this->processUserLogin($request, $userInfo, $refreshToken, $user['exp'], $returnTo);
+      return $this->processUserLogin($request, $userInfo, $refreshToken, $user->getExpiration(), $returnTo);
     }
     else {
       return $this->failLogin($problem_logging_in_msg, 'No userinfo found');

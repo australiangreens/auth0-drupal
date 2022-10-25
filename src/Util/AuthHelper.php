@@ -7,8 +7,7 @@ namespace Drupal\auth0\Util;
  * Contains \Drupal\auth0\Util\AuthHelper.
  */
 
-use Auth0\SDK\API\Helpers\ApiClient;
-use Auth0\SDK\API\Helpers\InformationHeaders;
+use Auth0\SDK\Utility\HttpTelemetry;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 
@@ -58,12 +57,7 @@ class AuthHelper {
    * Extend Auth0 PHP SDK telemetry to report for Drupal.
    */
   public static function setTelemetry() {
-    $oldInfoHeaders = ApiClient::getInfoHeadersData();
-    if ($oldInfoHeaders) {
-      $infoHeaders = InformationHeaders::Extend($oldInfoHeaders);
-      $infoHeaders->setPackage('auth0-drupal', AUTH0_MODULE_VERSION);
-      ApiClient::setInfoHeadersData($infoHeaders);
-    }
+    HttpTelemetry::setPackage('auth0-drupal', AUTH0_MODULE_VERSION);
   }
 
   /**
