@@ -286,7 +286,8 @@ class AuthController extends ControllerBase {
 
     // If supporting SSO, redirect to the hosted login page for authorization.
     if ($this->redirectForSso) {
-      return new TrustedRedirectResponse($this->auth0->login($returnTo));
+      $response = new TrustedRedirectResponse($this->auth0->login($returnTo));
+      return $response->send();
     }
 
     // Not doing SSO, so show login page.
@@ -322,17 +323,16 @@ class AuthController extends ControllerBase {
    *
    * @return \Drupal\Core\Routing\TrustedRedirectResponse
    *   The response after logout.
+   *
+   * @todo Allow returnTo and frederated parameters.
+   * @see https://auth0.com/docs/api/authentication?http#logout
    */
   public function logout() {
     $auth0Api = new Authentication($this->auth0->configuration());
-
     user_logout();
 
-    // If we are using SSO, we need to logout completely from Auth0,
-    // otherwise they will just logout of their client.
-    return new TrustedRedirectResponse($auth0Api->getLogoutLink(
-      $this->currentRequest->getSchemeAndHttpHost()
-    ));
+    $response = new TrustedRedirectResponse($auth0Api->getLogoutLink());
+    return $response->send();
   }
 
   /**
