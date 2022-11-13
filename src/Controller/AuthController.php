@@ -319,7 +319,10 @@ class AuthController extends ControllerBase {
   }
 
   /**
-   * Handles the login page override.
+   * Handles the logout page override.
+   *
+   * @param string $return
+   *   URL to return to after logout.
    *
    * @return \Drupal\Core\Routing\TrustedRedirectResponse
    *   The response after logout.
@@ -327,11 +330,15 @@ class AuthController extends ControllerBase {
    * @todo Allow returnTo and frederated parameters.
    * @see https://auth0.com/docs/api/authentication?http#logout
    */
-  public function logout() {
+  public function logout(string $return = NULL) {
+    global $base_url;
     $auth0Api = new Authentication($this->auth0->configuration());
     user_logout();
 
-    $response = new TrustedRedirectResponse($auth0Api->getLogoutLink());
+    if (!$return) {
+      $return = $base_url;
+    }
+    $response = new TrustedRedirectResponse($auth0Api->getLogoutLink($return));
     return $response->send();
   }
 
