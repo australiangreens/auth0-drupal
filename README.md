@@ -1,17 +1,7 @@
-Drupal 8/9 Module for Auth0
+Drupal 8 Module for Auth0
 ====
 
-## NOTICE
-
-The Auth0 Community is in the process of deprecating this library, and the repository will no longer be available on Github after the end-of-life date of **March 8, 2022**. Please make plans to find a suitable replacement or remove this library from any active projects before the end-of-life date. Please reach out in the supporting [Auth0 Community topic](https://community.auth0.com/t/community-repo-deprecation-auth0-drupal/69328) if you have any questions or concerns.
-
-### Alternative Solution
-An alternative solution could possibly be Drupal as it now can support OIDC via a Drupal Module. This will likely change the user experience if you are currently leveraging auth0-drupal in your project but does give another option to explore. Find out more at [Drupal OpenID Connect / OAuth client](https://www.drupal.org/project/openid_connect). 
-
-## Drupal 8/9 Details
-This plugin replaces standard Drupal 8/9 login forms with one powered by Auth0 that enables social, passwordless, and enterprise connection login as well as additional security, multifactor auth, and user statistics.
-
-Drupal 9 compatibility exists only in the Australian Greens fork of the module, and only on tagged releases numbered `9.x-3.x.x`.
+This plugin replaces standard Drupal 8 login forms with one powered by Auth0 that enables social, passwordless, and enterprise connection login as well as additional security, multifactor auth, and user statistics.
 
 Drupal 7 is supported only on v1. If you want to contribute to the codebase, please push your PRs against the `1.x.x` branch. Note that this branch is not regularly maintained.
 
@@ -27,36 +17,9 @@ Drupal 7 is supported only on v1. If you want to contribute to the codebase, ple
 
 ## Installation
 
-Before you start, **make sure the admin user has a valid email that you own**. This module delegates the site authentication to Auth0. That means that you won't be using the Drupal database to authenticate users (user records will still be created) and the default login box will not be shown. 
+Before you start, **make sure the admin user has a valid email that you own**. This module delegates the site authentication to Auth0. That means that you won't be using the Drupal database to authenticate users (user records will still be created) and the default login box will not be shown.
 
-There are 2 ways to install this module detailed below. **Please note:** the Auth0 login form will not appear until the module has been configured (see [Getting Started](#getting-started) below).
-
-### Install from Drupal.org manually
-
-1. Go to the [DO Auth0 module page](https://www.drupal.org/project/auth0), scroll to "Downloads," and copy the URL to the latest version's tar.gz file. 
-2. Go to Manage > Extend and click **Install New Module**.
-3. Paste the URL copied into the "Install from a URL" field and click **Install**.
-4. Back on the Modules page, scroll down the the Auth0 module, click the checkbox, then click **Install**.
-
-### Install from Github
-
-Installing from Github requires Composer ([installation instructions](https://getcomposer.org/doc/00-intro.md)).
-
-1. Navigate to your site's modules directory and clone this repo:
-
-```bash
-$ cd PATH/TO/DRUPAL/ROOT/modules
-$ git clone https://github.com/auth0/auth0-drupal.git auth0
-```
-
-2. Move to the newly-created directory and install the Composer dependencies:
-
-```bash
-$ cd auth0
-$ composer install
-```
-
-3. In Manage > Extend, scroll down the the Auth0 module, click the checkbox, then click **Install**
+**Please note:** the Auth0 login form will not appear until the module has been configured (see [Getting Started](#getting-started) below).
 
 ### Install from Drupal.org with Composer
 

@@ -2,7 +2,7 @@
 
 namespace Drupal\auth0\Event;
 
-use Symfony\Component\EventDispatcher\Event;
+use Drupal\Component\EventDispatcher\Event;
 use Drupal\user\UserInterface;
 
 /**
@@ -39,7 +39,7 @@ class Auth0UserSigninEvent extends Event {
   /**
    * The timestamp when the token expires.
    *
-   * @var timestamp
+   * @var int
    */
   protected $expiresAt;
 
@@ -52,7 +52,7 @@ class Auth0UserSigninEvent extends Event {
    *   The Auth0 profile array.
    * @param string $refreshToken
    *   The refresh token.
-   * @param string $expiresAt
+   * @param int $expiresAt
    *   The time when the ID Token expires in unix timestamp (seconds only).
    */
   public function __construct(UserInterface $user, array $auth0Profile, $refreshToken, $expiresAt) {
@@ -95,7 +95,7 @@ class Auth0UserSigninEvent extends Event {
   /**
    * Get the time when the ID token expires.
    *
-   * @return timestamp
+   * @return int
    *   The unix time when token expires.
    */
   public function getExpiresAt() {

@@ -1,5 +1,9 @@
 name: Auth0
 description: "Provides single sign on for Drupal pages"
-core: "8.x"
-core_version_requirement: ^8 || ^9
+core_version_requirement: ^8.8 || ^9
 type: module
+
+# Information added by Drupal.org packaging script on 2022-10-24
+version: '3.0.0-beta3'
+project: 'auth0'
+datestamp: 1666621861

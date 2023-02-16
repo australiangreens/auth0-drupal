@@ -2,7 +2,7 @@
 
 namespace Drupal\auth0\Event;
 
-use Symfony\Component\EventDispatcher\Event;
+use Drupal\Component\EventDispatcher\Event;
 use Drupal\user\UserInterface;
 
 /**

@@ -9,12 +9,13 @@ namespace Drupal\auth0\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\auth0\Util\AuthHelper;
 
 /**
  * This forms handles the basic module configurations.
  */
 class BasicSettingsForm extends ConfigFormBase {
+
+  const AUTH0_JWT_SIGNING_ALGORITHM = 'auth0_jwt_signature_alg';
 
   /**
    * {@inheritdoc}
@@ -78,14 +79,13 @@ class BasicSettingsForm extends ConfigFormBase {
       '#description' => $this->t('This is stated below the Client Secret field on the Application settings page in your Auth0 dashboard.'),
     ];
 
-    $form[AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM] = [
+    $form[static::AUTH0_JWT_SIGNING_ALGORITHM] = [
       '#type' => 'select',
       '#title' => $this->t('JsonWebToken Signature Algorithm'),
       '#options' => [
-        'HS256' => $this->t('HS256'),
         'RS256' => $this->t('RS256'),
       ],
-      '#default_value' => $config->get(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM) ?: AUTH0_DEFAULT_SIGNING_ALGORITHM,
+      '#default_value' => $config->get(static::AUTH0_JWT_SIGNING_ALGORITHM) ?: AUTH0_DEFAULT_SIGNING_ALGORITHM,
       '#description' => $this->t('Your JWT Signing Algorithm for the ID token. RS256 is recommended and must be set in the advanced settings for this client under the OAuth tab.'),
       '#required' => TRUE,
     ];
@@ -118,8 +118,8 @@ class BasicSettingsForm extends ConfigFormBase {
       $form_state->setErrorByName('auth0_domain', $this->t('Please complete your Auth0 domain'));
     }
 
-    if (empty($form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))) {
-      $form_state->setErrorByName(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $this->t('Please complete your Auth0 Signature Algorithm'));
+    if (empty($form_state->getValue(static::AUTH0_JWT_SIGNING_ALGORITHM))) {
+      $form_state->setErrorByName(static::AUTH0_JWT_SIGNING_ALGORITHM, $this->t('Please complete your Auth0 Signature Algorithm'));
     }
   }
 
@@ -133,7 +133,7 @@ class BasicSettingsForm extends ConfigFormBase {
       ->set('auth0_client_secret', $form_state->getValue('auth0_client_secret'))
       ->set('auth0_domain', $form_state->getValue('auth0_domain'))
       ->set('auth0_custom_domain', $form_state->getValue('auth0_custom_domain'))
-      ->set(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(AuthHelper::AUTH0_JWT_SIGNING_ALGORITHM))
+      ->set(static::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(static::AUTH0_JWT_SIGNING_ALGORITHM))
       ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
       ->save();
 
