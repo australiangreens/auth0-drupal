@@ -231,7 +231,7 @@ class AuthController extends ControllerBase {
     $this->redirectForSso = (bool) $this->config->get(AuthController::AUTH0_REDIRECT_FOR_SSO);
     $this->offlineAccess = (bool) $this->config->get(AuthController::AUTH0_OFFLINE_ACCESS);
     $this->currentRequest = $request_stack->getCurrentRequest();
-
+    $scopes = explode(' ', AUTH0_DEFAULT_SCOPES);
     $sdk_configuration = new SdkConfiguration([
       'domain'        => $this->helper->getAuthDomain(),
       'clientId'     => $this->clientId,
@@ -239,6 +239,7 @@ class AuthController extends ControllerBase {
       'cookieSecret' => $this->cookieSecret,
       'redirectUri'  => "$base_url/auth0/callback",
       'persistUser' => FALSE,
+      'scope' => ($this->offlineAccess ? array_merge($scopes, ['offline_access']) : $scopes),
     ]);
     $transient_store = new SessionStore($sdk_configuration);
     $sdk_configuration->setTransientStorage($transient_store);
