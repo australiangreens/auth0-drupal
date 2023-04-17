@@ -110,7 +110,7 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
   $twigFilePath = \Drupal::service('extension.list.module')->getPath('auth0') . '/templates/auth0-login.html.twig';
   $twigService = \Drupal::service('twig');
   $template = $twigService->loadTemplate($twigFilePath);
-  $markup = $template->render();
+  $markup = $template->render([]);
   // Add an Auth0 Lock widget.
   $form['auth0'] = [
     '#type' => 'markup',
