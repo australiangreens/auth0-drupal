@@ -38,6 +38,13 @@ class BasicAdvancedForm extends ConfigFormBase {
 
     $config = $this->configFactory()->get('auth0.settings');
 
+    $form['auth0_replace_forms'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Replace default Drupal login, registration, and password reset forms'),
+      '#default_value' => $config->get('auth0_replace_forms'),
+      '#description' => $this->t('Uncheck this box to disable replacement of the default Drupal login, registration, and password reset forms with the Auth0 Lock login widget. This allows maintaining the option to login with a Drupal username and password.'),
+    ];
+
     $form['auth0_form_title'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Form title'),
@@ -190,6 +197,7 @@ Drupal roles not listed above will not be changed by this module.
 
     $config = $this->configFactory()->getEditable('auth0.settings');
     $config->set('auth0_form_title', $form_state->getValue('auth0_form_title'))
+      ->set('auth0_replace_forms', $form_state->getValue('auth0_replace_forms'))
       ->set('auth0_allow_signup', $form_state->getValue('auth0_allow_signup'))
       ->set('auth0_allow_offline_access', $form_state->getValue('auth0_allow_offline_access'))
       ->set('auth0_redirect_for_sso', $form_state->getValue('auth0_redirect_for_sso'))

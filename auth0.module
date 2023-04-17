@@ -10,6 +10,8 @@ const AUTH0_DEFAULT_SIGNING_ALGORITHM = 'RS256';
 const AUTH0_DEFAULT_USERNAME_CLAIM = 'nickname';
 const AUTH0_MODULE_VERSION = '8.x-2.4';
 
+use Drupal\Core\Render\Element;
+
 /**
  * Implements hook_theme().
  */
@@ -19,7 +21,7 @@ function auth0_theme() {
     'auth0_login' => [
       'template' => 'auth0-login',
       'variables' => [
-        'loginCSS' => NULL,
+        'loginCSS' => \Drupal::config('auth0.settings')->get('auth0_login_css'),
       ],
     ],
   ];
@@ -36,10 +38,91 @@ function auth0_user_delete($account) {
 }
 
 /**
+ * Implements hook_form_alter().
+ *
+ * Replace the user login forms with the Auth0 login widget.
+ */
+function auth0_form_alter(&$form, $form_state, $form_id) {
+  $config = \Drupal::config('auth0.settings');
+  // If replacing the forms is disabled, then skip making alterations.
+  if (!$config->get('auth0_replace_forms')) {
+    return;
+  }
+
+  if (($form_id == 'user_login_block' || $form_id == 'user_login') && auth0_enabled('login')) {
+    _auth0_form_replace_with_lock($form, 'signin');
+  }
+
+  // If Auth0 controls the user database.
+  if ($form_id == 'user_register_form' && auth0_enabled('signup')) {
+    _auth0_form_replace_with_lock($form, 'signup');
+  }
+  if ($form_id == 'user_pass' && auth0_enabled('reset')) {
+    _auth0_form_replace_with_lock($form, 'reset');
+  }
+
+  // If the settings say to remove the signup altogether.
+  if (!$config->get('auth0_allow_signup')) {
+    if ($form_id == 'user_register_form' || $form_id == 'user_pass') {
+      // @TODO: Remove the user signup option.
+      $form_state->setRedirect('auth0.login');
+    }
+  }
+}
+
+/**
+ * Determine if Auth0 is enabled and can be used.
+ */
+function auth0_enabled($operation = '') {
+  $config = \Drupal::config('auth0.settings');
+  $out = FALSE;
+
+  // Check that the module has been configured.
+  if (
+    $config->get('auth0_domain') &&
+    $config->get('auth0_client_id') &&
+    $config->get('auth0_client_secret')
+    ) {
+
+    // Default to on if the module is configured.
+    $out = TRUE;
+
+    // See if our settings allow us to override the registration form.
+    if ($operation == 'signup' || $operation == 'reset') {
+      $out = (bool) $config->get('auth0_allow_signup');
+    }
+  }
+
+  // Allow other modules to override the status.
+  \Drupal::moduleHandler()->alter('auth0_enabled', $out, $operation);
+
+  return $out;
+}
+
+/**
+ * Replace a form with the lock widget.
+ */
+function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
+  // Remove the old form elements.
+  foreach (Element::children($form) as $child) {
+    unset($form[$child]);
+  }
+  $twigFilePath = \Drupal::service('extension.list.module')->getPath('auth0') . '/templates/auth0-login.html.twig';
+  $twigService = \Drupal::service('twig');
+  $template = $twigService->loadTemplate($twigFilePath);
+  $markup = $template->render();
+  // Add an Auth0 Lock widget.
+  $form['auth0'] = [
+    '#type' => 'markup',
+    '#markup' => $markup,
+  ];
+}
+
+/**
  * Implements hook_library_info_build().
  */
 function auth0_library_info_build() {
-  $config = \Drupal::service('config.factory')->get('auth0.settings');
+  $config = \Drupal::config('auth0.settings');
   return [
     'auth0.widget' => [
       'js' => [
