@@ -133,7 +133,7 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
   }
   $sso = $config->get('auth0_redirect_for_sso');
   $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
-  $loginLink = $authController->loginLink($returnTo);
+  $loginLink = Url::fromRoute('auth0.login')->toString();
   $markup = $template->render(['sso' => $sso, 'loginLink' => $loginLink, 'loginCSS' => \Drupal::config('auth0.settings')->get('auth0_login_css')]);
   $settings = $authController->lockSettings($lockExtraSettings, $returnTo);
   // Add an Auth0 Lock widget.
