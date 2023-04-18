@@ -11,6 +11,7 @@ const AUTH0_DEFAULT_USERNAME_CLAIM = 'nickname';
 const AUTH0_MODULE_VERSION = '8.x-2.4';
 
 use Drupal\Core\Render\Element;
+use Drupal\Core\Block\BlockPluginInterface;
 
 /**
  * Implements hook_theme().
