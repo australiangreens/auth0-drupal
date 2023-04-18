@@ -21,6 +21,8 @@ class Auth0BlockUserLoginViewBuilder implements TrustedCallbackInterface {
    * Pre-render callback for block user_login_block.
    */
   public static function preRender(array $build) {
+    var_dump(array_keys($build['content']));
+    var_dump(array_keys($build));
     unset($build['content']['user_links']['request_password']);
     return $build;
   }
