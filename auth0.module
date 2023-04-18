@@ -131,7 +131,7 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
   $auth0 = new Auth0($sdk_configuration);
   $request = \Drupal::request();
   $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
-  $loginLink = $auth0->login($returnTo));
+  $loginLink = $auth0->login($returnTo);
   $markup = $template->render(['sso' => $config->get('auth0_redirect_for_sso'), 'loginLink' => $loginLink]);
   $lockExtraSettings = $config->get('auth0_lock_extra_settings');
 
@@ -160,7 +160,7 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
     '#markup' => $markup,
   ];
   $form['#attached']['drupalSettings']['auth0'] = $settings;
-  $form['#attached']['library'][] = 'auth0/auth0.lock',
+  $form['#attached']['library'][] = 'auth0/auth0.lock';
 }
 
 /**
