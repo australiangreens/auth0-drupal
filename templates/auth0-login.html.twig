@@ -1,5 +1,8 @@
-<div id="auth0-login-form" style=" min-height: 440px;"></div>
-{{ login_link }}
+<div id="auth0-login-form" style=" min-height: 440px;">
+{% if sso %}
+<a href={{ loginLink }}>{{ 'Login In'|t }}</a>
+{% else %}
 <style type="text/css">
 {{ loginCSS|raw }}
 </style>
+{% endif %}

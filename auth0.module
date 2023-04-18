@@ -22,6 +22,8 @@ function auth0_theme() {
       'template' => 'auth0-login',
       'variables' => [
         'loginCSS' => \Drupal::config('auth0.settings')->get('auth0_login_css'),
+        'sso' => \Drupal::config('auth0.settings')->get('auth0_redirect_for_sso'),
+        'loginLink' => '',
       ],
     ],
   ];
@@ -117,18 +119,20 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
   if (trim($lockExtraSettings) == "") {
     $lockExtraSettings = "{}";
   }
+  $sso =  $config->get('auth0_redirect_for_sso');
   $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
   $loginLink = $authController->loginLink($returnTo);
-  $markup = $template->render(['sso' => $config->get('auth0_redirect_for_sso'), 'loginLink' => $loginLink]);
+  $markup = $template->render(['sso' => $sso, 'loginLink' => $loginLink, 'loginCSS' => \Drupal::config('auth0.settings')->get('auth0_login_css')]);
   $settings = $authController->lockSettings($lockExtraSettings, $returnTo);
-
   // Add an Auth0 Lock widget.
   $form['auth0'] = [
     '#type' => 'markup',
     '#markup' => $markup,
   ];
-  $form['#attached']['drupalSettings']['auth0'] = $settings;
-  $form['#attached']['library'][] = 'auth0/auth0.lock';
+  if (!$sso) {
+    $form['#attached']['drupalSettings']['auth0'] = $settings;
+    $form['#attached']['library'][] = 'auth0/auth0.lock';
+  }
 }
 
 /**
