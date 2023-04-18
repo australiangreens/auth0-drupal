@@ -63,7 +63,7 @@ function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_sta
   if ($form_id == 'user_pass' && auth0_enabled('reset')) {
     _auth0_form_replace_with_lock($form, 'reset');
   }
-  \var_dump($form_id);
+  \var_dump($config->get('auth0_allow_signup'));
   // If the settings say to remove the signup altogether.
   if (!$config->get('auth0_allow_signup')) {
     if ($form_id == 'user_register_form' || $form_id == 'user_pass') {
@@ -159,6 +159,7 @@ function auth0_library_info_build() {
  * rendering.
  */
 function auth0_block_view_user_login_block_alter(array &$build, BlockPluginInterface $block) {
+  var_dump($build);
   if (!\Drupal::config('auth0.settings')->get('auth0_allow_signup')) {
     unset ($build['content']['user_links']['request_password']);
   }
