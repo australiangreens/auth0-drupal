@@ -14,6 +14,7 @@ use Drupal\Core\Render\Element;
 use Drupal\Core\Block\BlockPluginInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\Core\Url;
+use Drupal\auth0\Auth0BlockUserLoginViewBuilder;
 
 /**
  * Implements hook_theme().
@@ -170,13 +171,6 @@ function auth0_library_info_build() {
  */
 function auth0_block_view_user_login_block_alter(array &$build, BlockPluginInterface $block) {
   if (!\Drupal::config('auth0.settings')->get('auth0_allow_signup')) {
-    $build['#pre_render'][] = '_auth0_user_login_block_pre_render';
+    $build['#pre_render'][] = [Auth0BlockUserLoginViewBuilder::class, 'preRender'];
   }
-}
-
-/**
- * Pre-render callback for block user_login_block.
- */
-function _auth0_user_login_block_pre_render(array $build) {
-  unset($build['content']['user_links']['request_password']);
 }
