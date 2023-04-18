@@ -22,6 +22,7 @@ class Auth0BlockUserLoginViewBuilder implements TrustedCallbackInterface {
    */
   public static function preRender(array $build) {
     unset($build['content']['user_links']['request_password']);
+    return $build;
   }
 
 }
