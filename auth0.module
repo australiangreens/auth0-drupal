@@ -11,6 +11,8 @@ const AUTH0_DEFAULT_USERNAME_CLAIM = 'nickname';
 const AUTH0_MODULE_VERSION = '8.x-2.4';
 
 use Drupal\Core\Render\Element;
+use Auth0\SDK\Helpers\TransientStoreHandler;
+use Auth0\SDK\Store\SessionStore;
 
 /**
  * Implements hook_theme().
@@ -42,15 +44,14 @@ function auth0_user_delete($account) {
  *
  * Replace the user login forms with the Auth0 login widget.
  */
-/*function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
-  \Drupal::logger('auth0')->notice($form_id);
+function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
   $config = \Drupal::config('auth0.settings');
   // If replacing the forms is disabled, then skip making alterations.
   if (!$config->get('auth0_replace_forms')) {
     return;
   }
 
-  if (($form_id == 'user_login_block' || $form_id == 'user_login') && auth0_enabled('login')) {
+  if (($form_id == 'user-login-form' || $form_id == 'user_login') && auth0_enabled('login')) {
     _auth0_form_replace_with_lock($form, 'signin');
   }
 
@@ -66,15 +67,15 @@ function auth0_user_delete($account) {
   if (!$config->get('auth0_allow_signup')) {
     if ($form_id == 'user_register_form' || $form_id == 'user_pass') {
       // @TODO: Remove the user signup option.
-//      $form_state->setRedirect('auth0.login');
+      $form_state->setRedirect('auth0.login');
     }
   }
-}*/
+}
 
 /**
  * Determine if Auth0 is enabled and can be used.
  */
-/*function auth0_enabled($operation = '') {
+function auth0_enabled($operation = '') {
   $config = \Drupal::config('auth0.settings');
   $out = FALSE;
 
@@ -98,26 +99,69 @@ function auth0_user_delete($account) {
   \Drupal::moduleHandler()->alter('auth0_enabled', $out, $operation);
 
   return $out;
-}*/
+}
 
 /**
  * Replace a form with the lock widget.
  */
-/*function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
+function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
   // Remove the old form elements.
   foreach (Element::children($form) as $child) {
     unset($form[$child]);
   }
+  $config = \Drupal::config('auth0.settings');
+  $helper = \Drupal::service('auth0.helper');
+  $tempStore = \Drupal::service('tempstore.private');
   $twigFilePath = \Drupal::service('extension.list.module')->getPath('auth0') . '/templates/auth0-login.html.twig';
   $twigService = \Drupal::service('twig');
   $template = $twigService->loadTemplate($twigFilePath);
-  $markup = $template->render([]);
+  global $base_url;
+  $scopes = explode(' ', AUTH0_DEFAULT_SCOPES);
+  $sdk_configuration = new SdkConfiguration([
+    'domain'        => $helper->getAuthDomain(),
+    'client_id'     => $config->get('auth0_client_id'),
+    'client_secret' => $config->get('auth0_client_secret'),
+    'redirect_uri'  => "$base_url/auth0/callback",
+    'persist_user' => FALSE,
+    'scope' => ($this->offlineAccess ? array_merge($scopes, ['offline_access']) : $scopes),
+  ]);
+  $transient_store = new SessionStore($sdk_configuration);
+  $sdk_configuration->setTransientStorage($transient_store);
+
+  $auth0 = new Auth0($sdk_configuration);
+  $request = \Drupal::request();
+  $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
+  $loginLink = $auth0->login($returnTo));
+  $markup = $template->render(['sso' => $config->get('auth0_redirect_for_sso'), 'loginLink' => $loginLink]);
+  $lockExtraSettings = $config->get('auth0_lock_extra_settings');
+
+  if (trim($lockExtraSettings) == "") {
+    $lockExtraSettings = "{}";
+  }
+
+  $settings = [
+    'clientId' => $config->get('auth0_client_id'),
+    'domain' => $helper->getAuthDomain(),
+    'lockExtraSettings' => $lockExtraSettings,
+    'configurationBaseUrl' => $helper->getTenantCdn($config->get('auth0_domain')),
+    'showSignup' => $config->get('auth0_allow_signup'),
+    'callbackURL' => "$base_url/auth0/callback",
+    'state' => $this->getState($returnTo),
+    'nonce' => $this->getNonce(),
+    'scopes' => AUTH0_DEFAULT_SCOPES,
+    'offlineAccess' => $config->get('auth0_allow_offline_access'),
+    'formTitle' => $config->get('auth0_form_title'),
+    'jsonErrorMsg' => $this->t('There was an error parsing the "Lock extra settings" field.'),
+  ];
+
   // Add an Auth0 Lock widget.
   $form['auth0'] = [
     '#type' => 'markup',
     '#markup' => $markup,
   ];
-}*/
+  $form['#attached']['drupalSettings']['auth0'] = $settings;
+  $form['#attached']['library'][] = 'auth0/auth0.lock',
+}
 
 /**
  * Implements hook_library_info_build().
