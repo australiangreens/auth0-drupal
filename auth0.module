@@ -45,14 +45,13 @@ function auth0_user_delete($account) {
  * Replace the user login forms with the Auth0 login widget.
  */
 function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
-  \var_dump($form_id);
   $config = \Drupal::config('auth0.settings');
   // If replacing the forms is disabled, then skip making alterations.
   if (!$config->get('auth0_replace_forms')) {
     return;
   }
 
-  if (($form_id == 'user-login-form' || $form_id == 'user_login') && auth0_enabled('login')) {
+  if (($form_id == 'user_login_form' || $form_id == 'user_login') && auth0_enabled('login')) {
     _auth0_form_replace_with_lock($form, 'signin');
   }
 
