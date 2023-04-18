@@ -159,7 +159,6 @@ function auth0_library_info_build() {
  * rendering.
  */
 function auth0_block_view_user_login_block_alter(array &$build, BlockPluginInterface $block) {
-  var_dump($build);
   if (!\Drupal::config('auth0.settings')->get('auth0_allow_signup')) {
     unset ($build['content']['user_links']['request_password']);
   }
