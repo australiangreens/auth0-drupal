@@ -287,7 +287,7 @@ class AuthController extends ControllerBase {
 
     // If supporting SSO, redirect to the hosted login page for authorization.
     if ($this->redirectForSso) {
-      $response = new TrustedRedirectResponse($this->auth0->login($returnTo));
+      $response = new TrustedRedirectResponse($this->loginLink($returnTo));
       return $response->send();
     }
 
@@ -300,22 +300,31 @@ class AuthController extends ControllerBase {
           'auth0/auth0.lock',
         ],
         'drupalSettings' => [
-          'auth0' => [
-            'clientId' => $this->config->get('auth0_client_id'),
-            'domain' => $this->helper->getAuthDomain(),
-            'lockExtraSettings' => $lockExtraSettings,
-            'configurationBaseUrl' => $this->helper->getTenantCdn($this->config->get('auth0_domain')),
-            'showSignup' => $this->config->get('auth0_allow_signup'),
-            'callbackURL' => "$base_url/auth0/callback",
-            'state' => $this->getState($returnTo),
-            'nonce' => $this->getNonce(),
-            'scopes' => AUTH0_DEFAULT_SCOPES,
-            'offlineAccess' => $this->offlineAccess,
-            'formTitle' => $this->config->get('auth0_form_title'),
-            'jsonErrorMsg' => $this->t('There was an error parsing the "Lock extra settings" field.'),
-          ],
+          'auth0' => $this->lockSettings($lockExtraSettings, $returnTo),
         ],
       ],
+    ];
+  }
+
+  public function loginLink($returnTo = NULL) {
+    return $this->auth0->login($returnTo);
+  }
+
+  public function lockSettings($lockExtraSettings, $returnTo = NULL) {
+    global $base_url;
+    return [
+      'clientId' => $this->config->get('auth0_client_id'),
+      'domain' => $this->helper->getAuthDomain(),
+      'lockExtraSettings' => $lockExtraSettings,
+      'configurationBaseUrl' => $this->helper->getTenantCdn($this->config->get('auth0_domain')),
+      'showSignup' => $this->config->get('auth0_allow_signup'),
+      'callbackURL' => "$base_url/auth0/callback",
+      'state' => $this->getState($returnTo),
+      'nonce' => $this->getNonce(),
+      'scopes' => AUTH0_DEFAULT_SCOPES,
+      'offlineAccess' => $this->offlineAccess,
+      'formTitle' => $this->config->get('auth0_form_title'),
+      'jsonErrorMsg' => $this->t('There was an error parsing the "Lock extra settings" field.'),
     ];
   }
 

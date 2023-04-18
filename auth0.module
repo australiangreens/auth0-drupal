@@ -11,8 +11,6 @@ const AUTH0_DEFAULT_USERNAME_CLAIM = 'nickname';
 const AUTH0_MODULE_VERSION = '8.x-2.4';
 
 use Drupal\Core\Render\Element;
-use Auth0\SDK\Helpers\TransientStoreHandler;
-use Auth0\SDK\Store\SessionStore;
 
 /**
  * Implements hook_theme().
@@ -110,50 +108,19 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
     unset($form[$child]);
   }
   $config = \Drupal::config('auth0.settings');
-  $helper = \Drupal::service('auth0.helper');
-  $tempStore = \Drupal::service('tempstore.private');
   $twigFilePath = \Drupal::service('extension.list.module')->getPath('auth0') . '/templates/auth0-login.html.twig';
   $twigService = \Drupal::service('twig');
+  $authController = new Drupal\auth0\Controller\AuthController();
   $template = $twigService->loadTemplate($twigFilePath);
-  global $base_url;
-  $scopes = explode(' ', AUTH0_DEFAULT_SCOPES);
-  $sdk_configuration = new SdkConfiguration([
-    'domain'        => $helper->getAuthDomain(),
-    'client_id'     => $config->get('auth0_client_id'),
-    'client_secret' => $config->get('auth0_client_secret'),
-    'redirect_uri'  => "$base_url/auth0/callback",
-    'persist_user' => FALSE,
-    'scope' => ($this->offlineAccess ? array_merge($scopes, ['offline_access']) : $scopes),
-  ]);
-  $transient_store = new SessionStore($sdk_configuration);
-  $sdk_configuration->setTransientStorage($transient_store);
-
-  $auth0 = new Auth0($sdk_configuration);
   $request = \Drupal::request();
-  $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
-  $loginLink = $auth0->login($returnTo);
-  $markup = $template->render(['sso' => $config->get('auth0_redirect_for_sso'), 'loginLink' => $loginLink]);
-  \var_dump($markup);
   $lockExtraSettings = $config->get('auth0_lock_extra_settings');
-
   if (trim($lockExtraSettings) == "") {
     $lockExtraSettings = "{}";
   }
-
-  $settings = [
-    'clientId' => $config->get('auth0_client_id'),
-    'domain' => $helper->getAuthDomain(),
-    'lockExtraSettings' => $lockExtraSettings,
-    'configurationBaseUrl' => $helper->getTenantCdn($config->get('auth0_domain')),
-    'showSignup' => $config->get('auth0_allow_signup'),
-    'callbackURL' => "$base_url/auth0/callback",
-    'state' => $this->getState($returnTo),
-    'nonce' => $this->getNonce(),
-    'scopes' => AUTH0_DEFAULT_SCOPES,
-    'offlineAccess' => $config->get('auth0_allow_offline_access'),
-    'formTitle' => $config->get('auth0_form_title'),
-    'jsonErrorMsg' => $this->t('There was an error parsing the "Lock extra settings" field.'),
-  ];
+  $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
+  $loginLink = $authController->loginLink();
+  $markup = $template->render(['sso' => $config->get('auth0_redirect_for_sso'), 'loginLink' => $loginLink]);
+  $settings = $authController->lockSettings();
 
   // Add an Auth0 Lock widget.
   $form['auth0'] = [
