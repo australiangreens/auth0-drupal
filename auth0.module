@@ -118,9 +118,9 @@ function _auth0_form_replace_with_lock(&$form, $mode = 'signin') {
     $lockExtraSettings = "{}";
   }
   $returnTo = $request->request->get('returnTo', $request->query->get('returnTo', NULL));
-  $loginLink = $authController->loginLink();
+  $loginLink = $authController->loginLink($returnTo);
   $markup = $template->render(['sso' => $config->get('auth0_redirect_for_sso'), 'loginLink' => $loginLink]);
-  $settings = $authController->lockSettings();
+  $settings = $authController->lockSettings($lockExtraSettings, $returnTo);
 
   // Add an Auth0 Lock widget.
   $form['auth0'] = [
