@@ -69,7 +69,6 @@ function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_sta
   // If the settings say to remove the signup altogether.
   if (!$config->get('auth0_allow_signup')) {
     if ($form_id == 'user_register_form' || $form_id == 'user_pass') {
-      \var_dump($config->get('auth0_allow_signup'));
       // @TODO: Remove the user signup option.
       $url = Url::fromRoute('auth0.login');
       $response = new RedirectResponse($url->toString());

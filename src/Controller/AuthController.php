@@ -20,6 +20,7 @@ use Drupal\Core\TempStore\PrivateTempStore;
 use Drupal\Core\PageCache\ResponsePolicyInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
+use Drupal\Core\Url;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -605,7 +606,7 @@ class AuthController extends ControllerBase {
     }
 
     user_login_finalize($user);
-    $this->auth0Logger->notice('Session values %session',['%session' => json_encode(\Drupal::request()->getSession()->all())]);
+
     if ($returnTo) {
       return new RedirectResponse($returnTo);
     }
@@ -613,7 +614,7 @@ class AuthController extends ControllerBase {
       return new RedirectResponse($request->request->get('destination'));
     }
 
-    return new RedirectResponse('entity.user.canonical', ['user' => $user->id()]);
+    return new RedirectResponse(Url::fromRoute('entity.user.canonical', ['user' => $user->id()])->toString());
   }
 
   /**
