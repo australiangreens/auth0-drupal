@@ -234,13 +234,14 @@ class AuthController extends ControllerBase {
     $this->currentRequest = $request_stack->getCurrentRequest();
     $scopes = explode(' ', AUTH0_DEFAULT_SCOPES);
     $sdk_configuration = new SdkConfiguration([
-      'domain'        => $this->helper->getAuthDomain(),
+      'domain'       => $this->helper->getAuthDomain(),
       'clientId'     => $this->clientId,
       'clientSecret' => $this->clientSecret,
       'cookieSecret' => $this->cookieSecret,
       'redirectUri'  => "$base_url/auth0/callback",
       'persistUser' => FALSE,
       'scope' => ($this->offlineAccess ? array_merge($scopes, ['offline_access']) : $scopes),
+      'cookieDomain' => '.d9.dev.greens.systems',
     ]);
     $transient_store = new SessionStore($sdk_configuration);
     $sdk_configuration->setTransientStorage($transient_store);
