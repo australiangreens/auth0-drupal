@@ -605,7 +605,7 @@ class AuthController extends ControllerBase {
     }
 
     user_login_finalize($user);
-
+    $this->auth0Logger->notice('Session check_logged_in %value', ['%value' => $this->sessionManager->get('check_logged_in')]);
     if ($returnTo) {
       return new RedirectResponse($returnTo);
     }
@@ -613,7 +613,7 @@ class AuthController extends ControllerBase {
       return new RedirectResponse($request->request->get('destination'));
     }
 
-    return $this->redirect('entity.user.canonical', ['user' => $user->id()]);
+    return new RedirectResponse('entity.user.canonical', ['user' => $user->id()]);
   }
 
   /**
