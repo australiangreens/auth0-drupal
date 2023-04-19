@@ -605,7 +605,7 @@ class AuthController extends ControllerBase {
     }
 
     user_login_finalize($user);
-    $this->auth0Logger->notice('Session check_logged_in %value', ['%value' => $this->sessionManager->get('check_logged_in')]);
+    $this->auth0Logger->notice('Session %session',['%session' => \Drupal::request()->getSession()]);
     if ($returnTo) {
       return new RedirectResponse($returnTo);
     }
