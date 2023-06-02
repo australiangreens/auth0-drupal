@@ -10,11 +10,14 @@ const AUTH0_DEFAULT_SIGNING_ALGORITHM = 'RS256';
 const AUTH0_DEFAULT_USERNAME_CLAIM = 'nickname';
 const AUTH0_MODULE_VERSION = '8.x-2.4';
 
+
 use Drupal\Core\Render\Element;
 use Drupal\Core\Block\BlockPluginInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\Core\Url;
 use Drupal\auth0\Auth0BlockUserLoginViewBuilder;
+use Auth0\SDK\Auth0;
+use Auth0\SDK\Configuration\SdkConfiguration;
 
 /**
  * Implements hook_theme().
@@ -171,5 +174,102 @@ function auth0_library_info_build() {
 function auth0_block_view_user_login_block_alter(array &$build, BlockPluginInterface $block) {
   if (!\Drupal::config('auth0.settings')->get('auth0_allow_signup')) {
     $build['#pre_render'][] = [Auth0BlockUserLoginViewBuilder::class, 'preRender'];
+  }
+}
+
+
+/**
+ * Implements hook_user_presave().
+ *
+ * Create the user in Auth0
+ */
+function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
+  $config = \Drupal::config('auth0.settings');
+  $connection = $config->get('auth0_user_push_connection');
+
+  // skip if the user create came from Auth0, is not new or if push disabled.
+  $session = \Drupal::request()->getSession();
+  $sessionAuth0Id = $session->get('auth0_id') ?? 0;
+  if ($config->get('auth0_user_push') && isset($connection) && empty($sessionAuth0Id)) {
+
+    if ($account->isNew()) {
+
+      // Create the user in Auth0 with a DB connection
+      try {
+        $domain = $config->get('auth0_domain');
+        $client_id = $config->get('auth0_client_id');
+        $client_secret = $config->get('auth0_client_secret');
+        $audience = 'https://' . check_plain($config->get("auth0_domain")) . '/api/v2/';
+
+        $configuration = new SdkConfiguration([
+          'domain'       => $domain,
+          'clientId'     => $client_id,
+          'clientSecret' => $client_secret,
+          'scope' => AUTH0_DEFAULT_SCOPES,
+        ]);
+        $transient_store_auth = new SessionStore($configuration);
+        $configuration->setTransientStorage($transient_store_auth);
+        $authenticationAuth0 = new auth0($configuration);
+
+        $response = $authenticationAuth0->authentication()->clientCredentials([
+          'audience' => [$audience],
+        ]);
+        if ($response->getStatusCode() !== 200) {
+          \Drupal::messager()->addError(t('There was a problem getting the access token to perform management API work'));
+        }
+
+        $token = json_decode($response->getBody()->__toString(), true, 512, JSON_THROW_ON_ERROR);
+        $access_token = $token['access_token'];
+
+        $managementSdk = new SdkConfiguration([
+          'managementToken' => $access_token,
+          'domain' => $domain,
+        ]);
+        $transient_store = new SessionStore($managementSdk);
+        $managementSdk->setTransientStorage($transient_store);
+        $managementAuth0 = new Auth0($managementSdk);
+        $managementClient = $managementAuth0->management();
+
+        $managementClient->users()->create([
+          'connection' => $connection,
+          'email' => $account->getEmail(),
+          'password' => \Drupal::service('password_generator')->generate() . '!',  // Satisfy Auth0 password policy
+          'email_verified' => TRUE,
+          'nickname' => $account->getAccountName(),
+          'app_metadata' => json_decode($config->get('auth0_user_push_app_metadata'), true)
+        ]);
+
+        \Drupal::messenger()->addStatus(t('The account has been created in Auth0.'));
+
+        try {
+          // Send a Link for a passwordless login
+          $urlObject = new Url('auth0.callback', [
+            'destination' => \Drupal::config('system.site')->get('page.front'),
+          ]);
+          $urlObject->setAbsolute(TRUE);
+          $authParams = [
+            'redirect_uri' => $urlObject->toString(),
+            'scope' => 'openid profile email',
+            'response_type' => 'code'
+          ];
+
+          $authenticationAuth0->authentication()->emailPasswordlessStart($account->getEmail(), 'link', $authParams);
+
+          \Drupal::messenger()->addStatus(t('An Email with a one-time link has been sent.'));
+        }
+        catch(\Exception $e) {
+          \Drupal::messenger()->addError(t('There was a problem sending the one-time link from Auth0.'));
+          \Drupal::logger('Auth0')->error('Error creating passwordless start: ' . $e->getMessage(), []);
+        }
+      }
+      catch (ClientException $e) {
+        \Drupal::messenger()->addError(t('There was a problem creating the user in Auth0.'));
+        \Drupal::logger('Auth0')->error('Error creating client API session: '.$e->getMessage(), []);
+      }
+      catch(\Exception $e) {
+        \Drupal::messenger()->addError(t('There was a problem creating the user in Auth0.'));
+        \Drupal::logger('Auth0')->error('Error creating user in Auth0: '.$e->getMessage(), []);
+      }
+    }
   }
 }

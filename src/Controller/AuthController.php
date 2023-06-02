@@ -1002,6 +1002,9 @@ class AuthController extends ControllerBase {
    * @throws \Exception
    */
   protected function createDrupalUser(array $userInfo) {
+    // Store Auth0 id in session to prevent pre-save from pushing same user account back to auth0
+    $session = \Drupal::request()->getSession();
+    $session->set('auth0_id', $userInfo['user_id']);
     $user_name_claim = $this->config->get('auth0_username_claim');
     if ($user_name_claim == '') {
       $user_name_claim = 'nickname';

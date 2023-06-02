@@ -102,6 +102,38 @@ Drupal user account.
 '),
     ];
 
+    $form['auth0_user_push'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Push new users into Auth0'),
+      '#default_value' => $config->get('auth0_user_push'),
+      '#description' => t('When a user is created in Drupal, push this to Auth0. This is sometimes required when the Drupal database is in extended migration mode.'),
+    ];
+
+    $form['auth0_user_push_connection'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Connection to use for the new user pushed into Auth0'),
+      '#default_value' => $config->get('auth0_user_push_connection'),
+      '#description' => $this->t('The connection to use for the new user that is pushed into Auth0.'),
+      '#states' => [
+        'visible' => [
+          ':input[name="auth0_user_push"]' => ['checked' => TRUE],
+        ],
+      ],
+    ];
+
+    $form['auth0_user_push_app_metadata'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('app_metadata for the new user pushed into Auth0'),
+      '#default_value' => $config->get('auth0_user_push_app_metadata'),
+      '#description' => $this->t('This should be a valid JSON. This object will be used on new user that is pushed into Auth0.'),
+      '#states' => [
+        'visible' => [
+          ':input[name="auth0_user_push"]' => ['checked' => TRUE],
+        ],
+      ],
+    ];
+
+
     $form['auth0_username_claim'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Map Auth0 claim to Drupal user name.'),
@@ -212,6 +244,9 @@ Drupal roles not listed above will not be changed by this module.
       ->set('auth0_claim_to_use_for_role', $form_state->getValue('auth0_claim_to_use_for_role'))
       ->set('auth0_role_mapping', $form_state->getValue('auth0_role_mapping'))
       ->set('auth0_username_claim', $form_state->getValue('auth0_username_claim'))
+      ->set('auth0_user_push', $form_state->getValue('auth0_user_push'))
+      ->set('auth0_user_push_connection', $form_state->getValue('auth0_user_push_connection'))
+      ->set('auth0_user_push_app_metadata', $form_state->getValue('auth0_user_push_app_metadata'))
       ->save();
 
     $this->messenger()->addStatus($this->t('Saved!'));
