@@ -18,6 +18,8 @@ use Drupal\Core\Url;
 use Drupal\auth0\Auth0BlockUserLoginViewBuilder;
 use Auth0\SDK\Auth0;
 use Auth0\SDK\Configuration\SdkConfiguration;
+use Auth0\SDK\Utility\TransientStoreHandler;
+use Auth0\SDK\Store\SessionStore;
 
 /**
  * Implements hook_theme().
@@ -191,7 +193,6 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
   $session = \Drupal::request()->getSession();
   $sessionAuth0Id = $session->get('auth0_id') ?? 0;
   if ($config->get('auth0_user_push') && isset($connection) && empty($sessionAuth0Id)) {
-
     if ($account->isNew()) {
 
       // Create the user in Auth0 with a DB connection
@@ -199,38 +200,21 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
         $domain = $config->get('auth0_domain');
         $client_id = $config->get('auth0_client_id');
         $client_secret = $config->get('auth0_client_secret');
-        $audience = 'https://' . check_plain($config->get("auth0_domain")) . '/api/v2/';
+        $audience = 'https://' . $config->get("auth0_domain") . '/api/v2/';
 
         $configuration = new SdkConfiguration([
           'domain'       => $domain,
           'clientId'     => $client_id,
           'clientSecret' => $client_secret,
-          'scope' => AUTH0_DEFAULT_SCOPES,
+          'cookieSecret' => $config->get('auth0_cookie_secret'),
+          'scope' => explode(' ', AUTH0_DEFAULT_SCOPES),
         ]);
         $transient_store_auth = new SessionStore($configuration);
         $configuration->setTransientStorage($transient_store_auth);
-        $authenticationAuth0 = new auth0($configuration);
+        $auth0 = new auth0($configuration);
 
-        $response = $authenticationAuth0->authentication()->clientCredentials([
-          'audience' => [$audience],
-        ]);
-        if ($response->getStatusCode() !== 200) {
-          \Drupal::messager()->addError(t('There was a problem getting the access token to perform management API work'));
-        }
-
-        $token = json_decode($response->getBody()->__toString(), true, 512, JSON_THROW_ON_ERROR);
-        $access_token = $token['access_token'];
-
-        $managementSdk = new SdkConfiguration([
-          'managementToken' => $access_token,
-          'domain' => $domain,
-        ]);
-        $transient_store = new SessionStore($managementSdk);
-        $managementSdk->setTransientStorage($transient_store);
-        $managementAuth0 = new Auth0($managementSdk);
-        $managementClient = $managementAuth0->management();
-
-        $managementClient->users()->create([
+        $managementClient = $auth0->management();
+        $managementClient->users()->create($connection, [
           'connection' => $connection,
           'email' => $account->getEmail(),
           'password' => \Drupal::service('password_generator')->generate() . '!',  // Satisfy Auth0 password policy
@@ -253,7 +237,7 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
             'response_type' => 'code'
           ];
 
-          $authenticationAuth0->authentication()->emailPasswordlessStart($account->getEmail(), 'link', $authParams);
+          $auth0->authentication()->emailPasswordlessStart($account->getEmail(), 'link', $authParams);
 
           \Drupal::messenger()->addStatus(t('An Email with a one-time link has been sent.'));
         }
