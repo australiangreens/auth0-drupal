@@ -232,6 +232,8 @@ class AuthController extends ControllerBase {
     $this->redirectForSso = (bool) $this->config->get(AuthController::AUTH0_REDIRECT_FOR_SSO);
     $this->offlineAccess = (bool) $this->config->get(AuthController::AUTH0_OFFLINE_ACCESS);
     $this->currentRequest = $request_stack->getCurrentRequest();
+    $session_config = \Drupal::service('session_configuration');
+    $cookie_domain = $session_config->getOptions(\Drupal::request())['cookie_domain'];
     $scopes = explode(' ', AUTH0_DEFAULT_SCOPES);
     $sdk_configuration = new SdkConfiguration([
       'domain'       => $this->helper->getAuthDomain(),
@@ -241,7 +243,7 @@ class AuthController extends ControllerBase {
       'redirectUri'  => "$base_url/auth0/callback",
       'persistUser' => FALSE,
       'scope' => ($this->offlineAccess ? array_merge($scopes, ['offline_access']) : $scopes),
-      'cookieDomain' => '.d9.dev.greens.systems',
+      'cookieDomain' => $cookie_domain,
     ]);
     $transient_store = new SessionStore($sdk_configuration);
     $sdk_configuration->setTransientStorage($transient_store);
