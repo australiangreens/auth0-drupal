@@ -197,15 +197,11 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
 
       // Create the user in Auth0 with a DB connection
       try {
-        $domain = $config->get('auth0_domain');
-        $client_id = $config->get('auth0_client_id');
-        $client_secret = $config->get('auth0_client_secret');
-        $audience = 'https://' . $config->get("auth0_domain") . '/api/v2/';
 
         $configuration = new SdkConfiguration([
-          'domain'       => $domain,
-          'clientId'     => $client_id,
-          'clientSecret' => $client_secret,
+          'domain'       => $config->get('auth0_domain'),
+          'clientId'     => $config->get('auth0_client_id'),
+          'clientSecret' => $config->get('auth0_client_secret'),
           'cookieSecret' => $config->get('auth0_cookie_secret'),
           'scope' => explode(' ', AUTH0_DEFAULT_SCOPES),
         ]);
@@ -233,7 +229,6 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
           $urlObject->setAbsolute(TRUE);
           $authParams = [
             'redirect_uri' => $urlObject->toString(),
-            'scope' => 'openid profile email',
             'response_type' => 'code'
           ];
 
