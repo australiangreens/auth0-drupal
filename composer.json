@@ -5,13 +5,13 @@
     "description": "Single Sign On for Enterprises + Social Login + User/Passwords. For all your Drupal instances. Powered by Auth0.",
     "require": {
         "auth0/auth0-php": "^8.3",
-        "php-http/guzzle6-adapter": "^2"
+        "drupal/core-recommended": "^10"
     },
     "require-dev": {
         "composer/installers": "^1.9",
-        "drupal/core-recommended": "^9",
-        "drupal/core-dev": "^9",
-        "drupal/core-composer-scaffold": "^9"
+        "drupal/core-recommended": "^10",
+        "drupal/core-dev": "^10",
+        "drupal/core-composer-scaffold": "^10"
     },
     "prefer-stable": true,
     "config": {
@@ -25,7 +25,8 @@
             "cweagans/composer-patches": true,
             "drupal/core-composer-scaffold": true,
             "dealerdirect/phpcodesniffer-composer-installer": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "phpstan/extension-installer": true
         }
     },
     "repositories": [
