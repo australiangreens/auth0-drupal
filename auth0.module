@@ -190,8 +190,13 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
   $connection = $config->get('auth0_user_push_connection');
 
   // skip if the user create came from Auth0, is not new or if push disabled.
+  // user actions from drush will not have a session, so this must also be considered
   $session = \Drupal::request()->getSession();
-  $sessionAuth0Id = $session->get('auth0_id') ?? 0;
+  if (!empty($session)) {
+    $sessionAuth0Id = $session->get('auth0_id') ?? 0;
+  else {
+    $sessionAuth0Id = 0;
+  }
   if ($config->get('auth0_user_push') && isset($connection) && empty($sessionAuth0Id)) {
     if ($account->isNew()) {
 
