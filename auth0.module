@@ -54,6 +54,27 @@ function auth0_user_delete($account) {
  * Replace the user login forms with the Auth0 login widget.
  */
 function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  /* @var \Drupal\Auth0\Util\AuthHelper $auth0Helper */
+  $auth0Helper = \Drupal::service('auth0.helper');
+  // Modify the User editing form.
+  if ($form_id == 'user_form') {
+    $account = $form->getEntity();
+    if (!$account->isNew() && $auth0Helper->findAuth0User($account->id())) {
+      if ($account->getEmail()) {
+        $form['account']['mail']['#disabled'] = TRUE;
+      }
+      else {
+        $form['account']['mail']['#access'] = FALSE;
+      }
+    }
+    // Remove the password field.
+    $form['account']['pass']['#access'] = FALSE;
+
+    // If there is no way to edit the mail/pass then we don't need the current pass f
+    if (isset($form['account']['current_pass'])) {
+      $form['account']['current_pass']['#access'] = FALSE;
+    }
+  }
   $config = \Drupal::config('auth0.settings');
   // If replacing the forms is disabled, then skip making alterations.
   if (!$config->get('auth0_replace_forms')) {

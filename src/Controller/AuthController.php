@@ -576,7 +576,7 @@ class AuthController extends ControllerBase {
       // See if there is a user in the auth0_user table with the user
       // info client ID.
       $this->auth0Logger->notice($userInfo['user_id'] . ' looking up Drupal user by Auth0 user_id');
-      $user = $this->findAuth0User($userInfo['user_id']);
+      $user = $this->helper->findAuth0User($userInfo['user_id']);
 
       if ($user) {
         $this->auth0Logger->notice('uid of existing Drupal user found');
@@ -727,19 +727,6 @@ class AuthController extends ControllerBase {
     );
 
     return $this->failLogin(Markup::create($messageHtml), 'Email not verified');
-  }
-
-  /**
-   * Get the auth0 user profile.
-   */
-  protected function findAuth0User($id) {
-    $auth0_user = $this->database->select('auth0_user', 'a')
-      ->fields('a', ['drupal_id'])
-      ->condition('auth0_id', $id, '=')
-      ->execute()
-      ->fetchAssoc();
-
-    return empty($auth0_user) ? FALSE : $this->entityTypeManager()->getStorage('user')->load($auth0_user['drupal_id']);
   }
 
   /**
