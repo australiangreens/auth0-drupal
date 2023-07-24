@@ -58,7 +58,7 @@ function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_sta
   $auth0Helper = \Drupal::service('auth0.helper');
   // Modify the User editing form.
   if ($form_id == 'user_form') {
-    $account = $form->getEntity();
+    $account = $form_state->getFormObject()->getEntity();
     if (!$account->isNew() && $auth0Helper->findAuth0User($account->id())) {
       if ($account->getEmail()) {
         $form['account']['mail']['#disabled'] = TRUE;
