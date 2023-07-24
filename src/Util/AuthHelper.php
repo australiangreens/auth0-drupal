@@ -40,6 +40,13 @@ class AuthHelper {
   private $customDomain;
 
   /**
+   * Database.
+   *
+   * @var \Drupal\Core\Database\Connection
+   */
+  protected Connection $database;
+
+  /**
    * Initialize the Helper.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
@@ -49,6 +56,7 @@ class AuthHelper {
     $this->config = $config_factory->get('auth0.settings');
     $this->domain = $this->config->get(AuthHelper::AUTH0_DOMAIN);
     $this->customDomain = $this->config->get(AuthHelper::AUTH0_CUSTOM_DOMAIN);
+    $this->database = \Drupal::database();
 
     self::setTelemetry();
   }
@@ -86,5 +94,19 @@ class AuthHelper {
       (empty($matches[1]) || $matches[1] == 'us' ? '' : '.' . $matches[1])
       . '.auth0.com';
   }
+
+  /**
+   * Get the auth0 user profile.
+   */
+  public function findAuth0User($id) {
+    $auth0_user = $this->database->select('auth0_user', 'a')
+      ->fields('a', ['drupal_id'])
+      ->condition('auth0_id', $id, '=')
+      ->execute()
+      ->fetchAssoc();
+
+    return empty($auth0_user) ? FALSE : $this->entityTypeManager()->getStorage('user')->load($auth0_user['drupal_id']);
+  }
+
 
 }
