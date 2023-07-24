@@ -215,6 +215,7 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
   $session = \Drupal::request()->getSession();
   if (!empty($session)) {
     $sessionAuth0Id = $session->get('auth0_id') ?? 0;
+  }
   else {
     $sessionAuth0Id = 0;
   }
