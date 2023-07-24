@@ -62,6 +62,10 @@ function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_sta
     if (!$account->isNew() && $auth0Helper->findAuth0User($account->id())) {
       if ($account->getEmail()) {
         $form['account']['mail']['#disabled'] = TRUE;
+        if (!is_array($form['account']['mail']['#attributes'])) {
+          $form['account']['mail']['#attributes'] = [];
+        }
+        $form['account']['mail']['#attributes']['disabled'] = 'disabled';
       }
       else {
         $form['account']['mail']['#access'] = FALSE;
