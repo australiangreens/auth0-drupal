@@ -106,7 +106,7 @@ class AuthHelper {
       ->execute()
       ->fetchAssoc();
 
-    return empty($auth0_user) ? FALSE : $this->entityTypeManager()->getStorage('user')->load($auth0_user['drupal_id']);
+    return empty($auth0_user) ? FALSE : \Drupal::entityTypeManager()->getStorage('user')->load($auth0_user['drupal_id']);
   }
 
 
