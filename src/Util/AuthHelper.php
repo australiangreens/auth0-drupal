@@ -10,6 +10,7 @@ namespace Drupal\auth0\Util;
 use Auth0\SDK\Utility\HttpTelemetry;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Database\Connection;
 
 /**
  * Controller routines for auth0 authentication.
