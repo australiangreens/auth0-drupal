@@ -62,9 +62,6 @@ function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_sta
     if (!$account->isNew() && $auth0Helper->findAuth0User($account->id())) {
       if ($account->getEmail()) {
         $form['account']['mail']['#disabled'] = TRUE;
-        if (!is_array($form['account']['mail']['#attributes'])) {
-          $form['account']['mail']['#attributes'] = [];
-        }
         $form['account']['mail']['#attributes']['disabled'] = 'disabled';
       }
       else {
@@ -92,6 +89,15 @@ function auth0_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_sta
   // If Auth0 controls the user database.
   if ($form_id == 'user_register_form' && auth0_enabled('signup')) {
     _auth0_form_replace_with_lock($form, 'signup');
+  }
+  elseif ($form_id == 'user_register_form') {
+    $form['account']['pass']['#type'] = 'textfield';
+    $form['account']['pass']['#default_value'] = \Drupal::service('password_generator')->generate();
+    $form['account']['pass']['#access'] = FALSE;
+    $form['account']['status']['#access'] = FALSE;
+    $form['account']['notify']['#access'] =  FALSE;
+    $form['account']['current_pass']['#access'] = FALSE;
+    return;
   }
   if ($form_id == 'user_pass' && auth0_enabled('reset')) {
     _auth0_form_replace_with_lock($form, 'reset');
