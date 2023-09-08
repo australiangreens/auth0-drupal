@@ -315,7 +315,6 @@ function auth0_fail_with_verify_email($idToken) {
  * Log in an Auth0 authenticated user.
  */
 function auth0_login_auth0_user($user_info, $id_token) {
-  watchdog('auth0', 'made it into auth0_login_auth0_user', [], WATCHDOG_DEBUG);
   $requires_email = variable_get('auth0_requires_email', TRUE);
   $requires_verified_email = $requires_email && variable_get('user_email_verification', TRUE);
 
