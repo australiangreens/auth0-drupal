@@ -144,7 +144,7 @@ function auth0_verify_email_page() {
   }
 
   try {
-    function_exists('dd') && dd('sending verification email');
+    //function_exists('dd') && dd('sending verification email');
     $userId = $user->sub;
 
     /* Need to use v2 Mgmt API to send verify email, must use tenancy domain for audience */
@@ -277,8 +277,8 @@ function auth0_callback() {
       return drupal_goto();
     }
 
-    function_exists('dd') && dd(var_export($user_info, TRUE), 'Good Login');
-    function_exists('dd') && dd(var_export($_GET, TRUE), 'From');
+    //function_exists('dd') && dd(var_export($user_info, TRUE), 'Good Login');
+    //function_exists('dd') && dd(var_export($_GET, TRUE), 'From');
 
     $success = auth0_login_auth0_user($user_info, $id_token);
   }
@@ -334,11 +334,11 @@ function auth0_login_auth0_user($user_info, $id_token) {
   }
 
   // See if there is a user in the auth0_user table with the user info client id
-  function_exists('dd') && dd($user_info['user_id'], 'looking up drupal user by auth0 user_id');
+  //function_exists('dd') && dd($user_info['user_id'], 'looking up drupal user by auth0 user_id');
   $uid = auth0_find_auth0_user($user_info['user_id']);
 
   if ($uid) {
-    function_exists('dd') && dd($uid, 'uid of existing drupal user found');
+    //function_exists('dd') && dd($uid, 'uid of existing drupal user found');
 
     // The user exists. Update the auth0_user with the new userInfo object.
     auth0_update_auth0_object($user_info);
@@ -350,7 +350,7 @@ function auth0_login_auth0_user($user_info, $id_token) {
     return auth0_authenticate_user($uid);
   }
   else {
-    function_exists('dd') && dd('existing drupal user NOT found');
+    //function_exists('dd') && dd('existing drupal user NOT found');
 
     // If the user doesn't exist we need to either create a new one, or assign
     // him to an existing one.
@@ -362,12 +362,12 @@ function auth0_login_auth0_user($user_info, $id_token) {
     if ('auth0' === $provider) {
       $isDatabaseUser = TRUE;
     }
-    function_exists('dd') && dd($isDatabaseUser, 'isDatabaseUser');
+    //function_exists('dd') && dd($isDatabaseUser, 'isDatabaseUser');
 
     $joinUser = FALSE;
 
     if (variable_get('auth0_join_user_by_mail_enabled', FALSE)) {
-      function_exists('dd') && dd($user_info['email'], 'join user by mail is enabled, looking up user by email');
+      //function_exists('dd') && dd($user_info['email'], 'join user by mail is enabled, looking up user by email');
       // If the user has a verified email or is a database user try to see if there is
       // a user to join with. The isDatabase is because we don't want to allow database
       // user creation if there is an existing one with no verified email.
@@ -375,11 +375,11 @@ function auth0_login_auth0_user($user_info, $id_token) {
         $joinUser = user_load_by_mail($user_info['email']);
       }
     } else {
-      function_exists('dd') && dd($user_info['email'], 'join user by mail is not enabled, skipping lookup user by email');
+      //function_exists('dd') && dd($user_info['email'], 'join user by mail is not enabled, skipping lookup user by email');
     }
 
     if ($joinUser) {
-      function_exists('dd') && dd($joinUser->uid, 'drupal user found by email with uid');
+      //function_exists('dd') && dd($joinUser->uid, 'drupal user found by email with uid');
       // If we are here, we have a potential join user.
       // Don't allow creation or assignation of user if the email is not verified, that would
       // be hijacking.
@@ -395,12 +395,12 @@ function auth0_login_auth0_user($user_info, $id_token) {
         return drupal_set_message(t('Only site administrators can create new user accounts.'), 'error');
       }
       else {
-        function_exists('dd') && dd('creating new drupal user from auth0 user');
+        //function_exists('dd') && dd('creating new drupal user from auth0 user');
         $uid = auth0_create_user_from_auth0($user_info);
       }
     }
 
-    function_exists('dd') && dd($uid, 'inserting auth0 user with uid');
+    //function_exists('dd') && dd($uid, 'inserting auth0 user with uid');
     auth0_insert_auth0_user($user_info, $uid);
 
     // Update field and role mappings
@@ -418,20 +418,20 @@ function auth0_login_auth0_user($user_info, $id_token) {
  */
 function auth0_update_fields_and_roles($user_info, $uid)
 {
-  function_exists('dd') && dd($user_info, 'auth0_update_fields_and_roles called');
+  //function_exists('dd') && dd($user_info, 'auth0_update_fields_and_roles called');
 
   $the_user = user_load($uid);
-  function_exists('dd') && dd($the_user, 'the_user before updates');
+  //function_exists('dd') && dd($the_user, 'the_user before updates');
   $edit = array();
 
   auth0_update_fields($user_info, $uid, $the_user, $edit);
   auth0_update_roles($user_info, $uid, $the_user, $edit);
 
-  function_exists('dd') && dd($edit, 'values to edit');
+  //function_exists('dd') && dd($edit, 'values to edit');
   user_save($the_user, $edit);
   //cache_clear_all('menu:'. $uid, TRUE);
 
-  function_exists('dd') && dd(user_load($uid), 'the_user after updates');
+  //function_exists('dd') && dd(user_load($uid), 'the_user after updates');
 }
 
 /*
@@ -440,21 +440,21 @@ function auth0_update_fields_and_roles($user_info, $uid)
 function auth0_update_fields($user_info, $uid, $the_user, &$edit)
 {
   $auth0_claim_mapping = variable_get('auth0_claim_mapping');
-  function_exists('dd') && dd($auth0_claim_mapping, 'auth0_claim_mapping');
+  //function_exists('dd') && dd($auth0_claim_mapping, 'auth0_claim_mapping');
 
   if (isset($auth0_claim_mapping) && !empty($auth0_claim_mapping)) {
     // For each claim mapping, lookup the value, otherwise set to blank
     $mappings = auth0_pipeListToArray($auth0_claim_mapping);
-    function_exists('dd') && dd($mappings, 'auth0_claim_mapping as array');
+    //function_exists('dd') && dd($mappings, 'auth0_claim_mapping as array');
 
     // Remove mappings handled automatically by the module
     $skip_mappings = array('uid', 'name', 'mail', 'init', 'is_new', 'status', 'pass');
     foreach ($mappings as $mapping) {
-      function_exists('dd') && dd($mapping, 'mapping');
+      //function_exists('dd') && dd($mapping, 'mapping');
 
       $key = $mapping[1];
       if (in_array($key, $skip_mappings)) {
-        function_exists('dd') && dd($mapping, 'skipping mapping handled already by auth0 module');
+        //function_exists('dd') && dd($mapping, 'skipping mapping handled already by auth0 module');
       } else {
         $value = isset($user_info[$mapping[0]]) ? $user_info[$mapping[0]] : '';
         //array()[LANGUAGE_NONE][0]['value'] = 'foo';
@@ -478,7 +478,7 @@ function auth0_update_roles($user_info, $uid, $the_user, &$edit)
   $auth0_claim_to_use_for_role = variable_get('auth0_claim_to_use_for_role');
   if (isset($auth0_claim_to_use_for_role) && !empty($auth0_claim_to_use_for_role)) {
     $claim_value = isset($user_info[$auth0_claim_to_use_for_role]) ? $user_info[$auth0_claim_to_use_for_role] : '';
-    function_exists('dd') && dd($claim_value, 'claim_value');
+    //function_exists('dd') && dd($claim_value, 'claim_value');
 
     $claim_values = array();
     if (is_array($claim_value)) {
@@ -486,16 +486,16 @@ function auth0_update_roles($user_info, $uid, $the_user, &$edit)
     } else {
       $claim_values[] = $claim_value;
     }
-    function_exists('dd') && dd($claim_values, 'claim_values');
+    //function_exists('dd') && dd($claim_values, 'claim_values');
 
     $auth0_role_mapping = variable_get('auth0_role_mapping');
     $mappings = auth0_pipeListToArray($auth0_role_mapping);
-    function_exists('dd') && dd($mappings, 'auth0_role_mapping as array');
+    //function_exists('dd') && dd($mappings, 'auth0_role_mapping as array');
 
     $roles_granted = array();
     $roles_managed_by_mapping = array();
     foreach ($mappings as $mapping) {
-      function_exists('dd') && dd($mapping, 'mapping');
+      //function_exists('dd') && dd($mapping, 'mapping');
       $roles_managed_by_mapping[] = $mapping[1];
 
       if (in_array($mapping[0], $claim_values)) {
@@ -504,17 +504,17 @@ function auth0_update_roles($user_info, $uid, $the_user, &$edit)
     }
     $roles_granted = array_unique($roles_granted);
     $roles_managed_by_mapping = array_unique($roles_managed_by_mapping);
-    function_exists('dd') && dd($roles_granted, 'roles_granted');
-    function_exists('dd') && dd($roles_managed_by_mapping, 'roles_managed_by_mapping');
+    //function_exists('dd') && dd($roles_granted, 'roles_granted');
+    //function_exists('dd') && dd($roles_managed_by_mapping, 'roles_managed_by_mapping');
 
     $not_granted = array_diff($roles_managed_by_mapping, $roles_granted);
-    function_exists('dd') && dd($not_granted, 'not_granted');
+    //function_exists('dd') && dd($not_granted, 'not_granted');
 
     $user_roles = $the_user->roles;
-    function_exists('dd') && dd($user_roles, 'user_roles');
+    //function_exists('dd') && dd($user_roles, 'user_roles');
 
     $new_user_roles = array_merge(array_diff($user_roles, $not_granted), $roles_granted);
-    function_exists('dd') && dd($new_user_roles, 'new_user_roles');
+    //function_exists('dd') && dd($new_user_roles, 'new_user_roles');
 
     $tmp = array_diff($new_user_roles, $user_roles);
     if (!empty($tmp)) {
@@ -523,7 +523,7 @@ function auth0_update_roles($user_info, $uid, $the_user, &$edit)
         $role = user_role_load_by_name($new_role);
         $new_user_roles_map[$role->rid] = $role->name;
       }
-      function_exists('dd') && dd($new_user_roles_map, 'changes to roles detected');
+      //function_exists('dd') && dd($new_user_roles_map, 'changes to roles detected');
       $edit['roles'] = $new_user_roles_map;
       $the_user->roles = $new_user_roles_map;
     }
@@ -635,10 +635,10 @@ function auth0_create_user_from_auth0($user_info) {
 
   // If the username already exists, create a new random one.
   $username = $user_info['nickname'];
-  function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 nickname');
+  //function_exists('dd') && dd($username, 'checking if drupal user already exists with auth0 nickname');
   if (user_load_by_name($username)) {
     $username .= time();
-    function_exists('dd') && dd($username, 'existing drupal user found, using new random name');
+    //function_exists('dd') && dd($username, 'existing drupal user found, using new random name');
   }
   $user->name = $username;
   $user->is_new = TRUE;
@@ -655,7 +655,7 @@ function auth0_create_user_from_auth0($user_info) {
   $user->data = array(
      'auth0_id' => $user_info['user_id']
   );
-  function_exists('dd') && dd($user, 'saving new drupal user');
+  //function_exists('dd') && dd($user, 'saving new drupal user');
   $new_user = user_save($user);
 
   if ($user) {
@@ -1259,7 +1259,7 @@ function auth0_user_presave(&$edit, $account, $category) {
 
     if (isset($account->is_new) && !empty($account->is_new)) {
 
-      function_exists('dd') && dd(var_export($account, TRUE), 'Pushing to Auth0');
+      //function_exists('dd') && dd(var_export($account, TRUE), 'Pushing to Auth0');
 
       // Create the user in Auth0 with a DB connection
       try {
