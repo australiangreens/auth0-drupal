@@ -582,11 +582,14 @@ class AuthController extends ControllerBase {
         $this->auth0Logger->notice('uid of existing Drupal user found');
 
         // User exists, update the auth0_user with the new userInfo object.
+        \Drupal::logger('auth0')->debug('updateAuth0User');
         $this->updateAuth0User($userInfo);
 
         // Update field and role mappings.
+        \Drupal::logger('auth0')->debug('auth0UpdateFieldsAndRoles');
         $this->auth0UpdateFieldsAndRoles($userInfo, $user);
 
+        \Drupal::logger('auth0')->debug('Dispatching Auth0UserSigninEvent');
         $event = new Auth0UserSigninEvent($user, $userInfo, $refreshToken, $expiresAt);
         $this->eventDispatcher->dispatch($event);
       }
@@ -608,8 +611,10 @@ class AuthController extends ControllerBase {
       return $this->auth0FailWithVerifyEmail();
     }
 
+    \Drupal::logger('auth0')->debug('Calling user_login_finalize($user)');
     user_login_finalize($user);
 
+    \Drupal::logger('auth0')->debug('user_login_finalize call complete');
     if ($returnTo) {
       return new RedirectResponse($returnTo);
     }
