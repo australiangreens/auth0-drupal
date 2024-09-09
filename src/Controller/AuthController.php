@@ -232,18 +232,16 @@ class AuthController extends ControllerBase {
     $this->redirectForSso = (bool) $this->config->get(AuthController::AUTH0_REDIRECT_FOR_SSO);
     $this->offlineAccess = (bool) $this->config->get(AuthController::AUTH0_OFFLINE_ACCESS);
     $this->currentRequest = $request_stack->getCurrentRequest();
-    $session_config = \Drupal::service('session_configuration');
-    $cookie_domain = $session_config->getOptions(\Drupal::request())['cookie_domain'];
+
     $scopes = explode(' ', AUTH0_DEFAULT_SCOPES);
     $sdk_configuration = new SdkConfiguration([
-      'domain'       => $this->helper->getAuthDomain(),
+      'domain'        => $this->helper->getAuthDomain(),
       'clientId'     => $this->clientId,
       'clientSecret' => $this->clientSecret,
       'cookieSecret' => $this->cookieSecret,
       'redirectUri'  => "$base_url/auth0/callback",
       'persistUser' => FALSE,
       'scope' => ($this->offlineAccess ? array_merge($scopes, ['offline_access']) : $scopes),
-      'cookieDomain' => $cookie_domain,
     ]);
     $transient_store = new SessionStore($sdk_configuration);
     $sdk_configuration->setTransientStorage($transient_store);
@@ -291,7 +289,7 @@ class AuthController extends ControllerBase {
 
     // If supporting SSO, redirect to the hosted login page for authorization.
     if ($this->redirectForSso) {
-      $response = new TrustedRedirectResponse($this->loginLink($returnTo));
+      $response = new TrustedRedirectResponse($this->auth0->login($returnTo));
       return $response->send();
     }
 

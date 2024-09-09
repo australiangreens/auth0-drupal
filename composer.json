@@ -4,13 +4,14 @@
     "license": "MIT",
     "description": "Single Sign On for Enterprises + Social Login + User/Passwords. For all your Drupal instances. Powered by Auth0.",
     "require": {
-        "auth0/auth0-php": "^8.3"
+        "auth0/auth0-php": "^8.3",
+        "drupal/core-recommended": "^10"
     },
     "require-dev": {
         "composer/installers": "^1.9",
-        "drupal/core-recommended": "^9",
-        "drupal/core-dev": "^9",
-        "drupal/core-composer-scaffold": "^9"
+        "drupal/core-recommended": "^10",
+        "drupal/core-dev": "^10",
+        "drupal/core-composer-scaffold": "^10"
     },
     "prefer-stable": true,
     "config": {
@@ -24,7 +25,8 @@
             "cweagans/composer-patches": true,
             "drupal/core-composer-scaffold": true,
             "dealerdirect/phpcodesniffer-composer-installer": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "phpstan/extension-installer": true
         }
     },
     "repositories": [
@@ -35,12 +37,24 @@
     ],
     "extra": {
         "installer-paths": {
-            "web/core": ["type:drupal-core"],
-            "web/libraries/{$name}": ["type:drupal-library"],
-            "web/modules/{$name}": ["type:drupal-module"],
-            "web/profiles/{$name}": ["type:drupal-profile"],
-            "web/themes/{$name}": ["type:drupal-theme"],
-            "drush/{$name}": ["type:drupal-drush"]
+            "web/core": [
+                "type:drupal-core"
+            ],
+            "web/libraries/{$name}": [
+                "type:drupal-library"
+            ],
+            "web/modules/{$name}": [
+                "type:drupal-module"
+            ],
+            "web/profiles/{$name}": [
+                "type:drupal-profile"
+            ],
+            "web/themes/{$name}": [
+                "type:drupal-theme"
+            ],
+            "drush/{$name}": [
+                "type:drupal-drush"
+            ]
         },
         "drupal-scaffold": {
             "locations": {
@@ -54,18 +68,18 @@
         }
     },
     "scripts": {
-      "post-install-cmd": "@post-update-cmd",
-      "post-update-cmd": [
-        "@populate-web-modules-project"
-      ],
-      "populate-web-modules-project": [
-        "rm -rf web/modules/project && mkdir -p web/modules/project",
-        "cp -r src/ js/ templates/ auth0.* composer.* web/modules/project/"
-      ],
-      "phpqa": [
-        "@populate-web-modules-project",
-        "docker run --rm -it -v `pwd`:/app/drupal -v $PWD/reports:/app/reports ghcr.io/sparkfabrik/drupal-qa:latest vendor/bin/phpqa --analyzedDirs /app/drupal/web/modules/project --tools=phpmetrics,phploc,phpcs,php-cs-fixer,phpmd,pdepend,phpcpd,phpstan,phpunit,security-checker:0,parallel-lint:0"
-      ]
+        "post-install-cmd": "@post-update-cmd",
+        "post-update-cmd": [
+            "@populate-web-modules-project"
+        ],
+        "populate-web-modules-project": [
+            "rm -rf web/modules/project && mkdir -p web/modules/project",
+            "cp -r src/ js/ templates/ auth0.* composer.* web/modules/project/"
+        ],
+        "phpqa": [
+            "@populate-web-modules-project",
+            "docker run --rm -it -v `pwd`:/app/drupal -v $PWD/reports:/app/reports ghcr.io/sparkfabrik/drupal-qa:latest vendor/bin/phpqa --analyzedDirs /app/drupal/web/modules/project --tools=phpmetrics,phploc,phpcs,php-cs-fixer,phpmd,pdepend,phpcpd,phpstan,phpunit,security-checker:0,parallel-lint:0"
+        ]
     },
     "authors": [
         {
