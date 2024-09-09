@@ -90,6 +90,14 @@ class BasicSettingsForm extends ConfigFormBase {
       '#required' => TRUE,
     ];
 
+    $form['auth0_cookie_secret'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Cookie Secret'),
+      '#default_value' => $config->get('auth0_cookie_secret'),
+      '#description' => $this->t('The secret used to derive an encryption key for the user identity in a session cookie and to sign the transient cookies used by the login callback.'),
+      '#required' => TRUE,
+    ];
+
     $form['actions']['#type'] = 'actions';
 
     $form['actions']['submit'] = [
@@ -121,6 +129,11 @@ class BasicSettingsForm extends ConfigFormBase {
     if (empty($form_state->getValue(static::AUTH0_JWT_SIGNING_ALGORITHM))) {
       $form_state->setErrorByName(static::AUTH0_JWT_SIGNING_ALGORITHM, $this->t('Please complete your Auth0 Signature Algorithm'));
     }
+
+    if (empty($form_state->getValue('auth0_cookie_secret'))) {
+      $form_state->setErrorByName('auth0_cookie_secret', $this->t('Please complete the cookie secret'));
+    }
+
   }
 
   /**
@@ -135,6 +148,7 @@ class BasicSettingsForm extends ConfigFormBase {
       ->set('auth0_custom_domain', $form_state->getValue('auth0_custom_domain'))
       ->set(static::AUTH0_JWT_SIGNING_ALGORITHM, $form_state->getValue(static::AUTH0_JWT_SIGNING_ALGORITHM))
       ->set('auth0_secret_base64_encoded', $form_state->getValue('auth0_secret_base64_encoded'))
+      ->set('auth0_cookie_secret', $form_state->getValue('auth0_cookie_secret'))
       ->save();
 
     $this->messenger()->addStatus($this->t('Saved!'));

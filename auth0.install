@@ -5,6 +5,8 @@
  * Installation file for the auth0 module.
  */
 
+use Drupal\Component\Utility\Crypt;
+
 /**
  * Implements hook_schema().
  */
@@ -69,6 +71,7 @@ function auth0_install() {
     ->set('auth0_claim_mapping', '')
     ->set('auth0_claim_to_use_for_role', '')
     ->set('auth0_role_mapping', '')
+    ->set('auth0_cookie_secret', Crypt::randomBytesBase64())
     ->save();
 }
 
@@ -79,4 +82,12 @@ function auth0_uninstall() {
   $config = \Drupal::service('config.factory');
   $auth0_config = $config->getEditable('auth0.settings');
   $auth0_config->delete();
+}
+
+/**
+ * Add a new random cookieSecret to the auth0 settings.
+ */
+function auth0_update_80301() {
+  $config = \Drupal::service('config.factory')->getEditable('auth0.settings');
+  $config->set('auth0_cookie_secret', Crypt::randomBytesBase64())->save();
 }
