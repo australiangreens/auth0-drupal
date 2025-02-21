@@ -863,8 +863,9 @@ class AuthController extends ControllerBase {
 
       $new_user_roles = array_merge(array_diff($user_roles, $not_granted), $roles_granted);
 
-      $roles_to_add = array_diff($new_user_roles, $user_roles);
-      $roles_to_remove = array_diff($user_roles, $new_user_roles);
+      // Only add or remove roles managed by auth0
+      $roles_to_add = array_intersect(array_diff($new_user_roles, $user_roles), $roles_managed_by_mapping);
+      $roles_to_remove = array_intersect(array_diff($user_roles, $new_user_roles), $roles_managed_by_mapping);
 
       if (empty($roles_to_add) && empty($roles_to_remove)) {
         $this->auth0Logger->notice('no changes to roles detected');
