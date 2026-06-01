@@ -50,5 +50,14 @@ function auth0_uninstall() {
   variable_del('auth0_domain');
   variable_del('auth0_client_id');
   variable_del('auth0_client_secret');
+  variable_del('auth0_cookie_secret');
+}
+
+/**
+ * Add auth0_cookie_secret variable required by auth0-php SDK v8.
+ */
+function auth0_update_7201() {
+  // No schema change needed — variable_get/set handles this.
+  // Deployers must set auth0_cookie_secret in settings.php or via the admin UI.
 }
 

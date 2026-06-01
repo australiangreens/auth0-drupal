@@ -1,9 +1,9 @@
 <?php
 
 use Auth0\SDK\Auth0;
-use Auth0\SDK\API\Authentication;
-use Auth0\SDK\API\Management;
-use Auth0\SDK\JWTVerifier;
+use Auth0\SDK\Configuration\SdkConfiguration;
+use Auth0\SDK\Store\SessionStore;
+use Auth0\SDK\Utility\TransientStoreHandler;
 
 // Define some module default settings
 define('AUTH0_WIDGET_CDN', 'https://cdn.auth0.com/js/lock/10.3/lock.min.js');
@@ -107,6 +107,32 @@ function auth0_user_info_page($user) {
 }
 
 /**
+ * Build an Auth0 SDK instance from stored configuration.
+ *
+ * @param string|null $redirect_uri
+ *   The redirect URI for the authorization flow, if needed.
+ *
+ * @return \Auth0\SDK\Auth0
+ */
+function _auth0_sdk($redirect_uri = NULL) {
+  $config = [
+    'domain'         => getDomain(),
+    'clientId'       => variable_get('auth0_client_id', ''),
+    'clientSecret'   => variable_get('auth0_client_secret', ''),
+    'cookieSecret'   => variable_get('auth0_cookie_secret', ''),
+    'scope'          => ['openid', 'profile', 'email'],
+    'persistUser'    => FALSE,
+    'tokenAlgorithm' => variable_get('auth0_jwt_signature_alg', 'RS256'),
+  ];
+  if ($redirect_uri) {
+    $config['redirectUri'] = $redirect_uri;
+  }
+  $configuration = new SdkConfiguration($config);
+  $configuration->setTransientStorage(new SessionStore($configuration));
+  return new Auth0($configuration);
+}
+
+/**
  * Verify email page callback.
  */
 function auth0_verify_email_page() {
@@ -117,49 +143,22 @@ function auth0_verify_email_page() {
   }
 
   $token = $_REQUEST['idToken'];
-  /**
-    * Validate the ID Token
-    */
-  $domain = getDomain();
-  $client_id = variable_get('auth0_client_id', '');
-  $client_secret = variable_get('auth0_client_secret', '');
-  $secret_base64_encoded = variable_get('auth0_secret_base64_encoded', FALSE);
-  $jwt_signature_alg = variable_get('auth0_jwt_signature_alg', "HS256");
+  $auth0 = _auth0_sdk();
 
-  $auth0_domain = 'https://' . $domain . '/';
-  $auth0_settings = array();
-  $auth0_settings['authorized_iss'] = [$auth0_domain];
-  $auth0_settings['supported_algs'] = [$jwt_signature_alg];
-  $auth0_settings['valid_audiences'] = [$client_id];
-  $auth0_settings['client_secret'] = $client_secret;
-  $auth0_settings['secret_base64_encoded'] = $secret_base64_encoded;
-  $jwt_verifier = new JWTVerifier($auth0_settings);
   try {
-    $user = $jwt_verifier->verifyAndDecode($token);
+    $user = $auth0->decode($token);
   }
   catch(\Exception $e) {
     drupal_set_message(t('There was a problem re-sending the email.'), 'error');
     watchdog('Auth0', 'Error validating the token while resending the email: '.$e->getMessage(), array(), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    return drupal_goto();
   }
 
   try {
-    //function_exists('dd') && dd('sending verification email');
-    $userId = $user->sub;
-
-    /* Need to use v2 Mgmt API to send verify email, must use tenancy domain for audience */
-    $audience = 'https://' . check_plain(variable_get("auth0_domain", '')) . '/api/v2/';
-    $auth0 = new Authentication($domain, $client_id);
-    $auth0_api = $auth0->client_credentials(array(
-      'client_id' => $client_id,
-      'client_secret' => $client_secret,
-      'audience' => $audience));
-    $access_token = $auth0_api['access_token'];
-    $mgmtClient = new Management($access_token, $domain);
-    $result = $mgmtClient->jobs->sendVerificationEmail($userId);
-
+    $userId = $user->getSubject();
+    $mgmtClient = $auth0->management();
+    $mgmtClient->jobs()->sendVerificationEmail($userId);
     drupal_set_message(t('A verification message with further instructions has been sent to your e-mail address.'));
-    
   }
   catch (\Exception $e) {
     drupal_set_message(t('Sorry, we could not send a verification e-mail. Please try again later.'), 'error');
@@ -201,63 +200,29 @@ function auth0_callback() {
       }
   }
 
-  $domain = getDomain();
-  $client_id = variable_get('auth0_client_id', '');
-  $client_secret = variable_get('auth0_client_secret', '');
-  $secret_base64_encoded = variable_get('auth0_secret_base64_encoded', FALSE);
-  $jwt_signature_alg = variable_get('auth0_jwt_signature_alg', "HS256");
-  $auth0 = new Auth0(array(
-      'domain' => $domain,
-      'client_id' => $client_id,
-      'client_secret' => $client_secret,
-      'redirect_uri' => url('auth0/callback', array('absolute' => TRUE)),
-      'store' => NULL, // Set to null so that the store is set to SessionStore.
-      'persist_id_token' => TRUE,
-      'persist_user' => FALSE,
-      'persist_access_token' => FALSE,
-      'persist_refresh_token' => FALSE    
-    ));
+  $auth0 = _auth0_sdk(url('auth0/callback', array('absolute' => TRUE)));
 
   $user_info = NULL;
 
   try {
+    $auth0->exchange();
     $user_info = $auth0->getUser();
     $id_token = $auth0->getIdToken();
   }
   catch (Exception $e) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
     watchdog('Auth0', 'Error occurred while getting the Auth0 user info or ID token: @exception', array('@exception' => print_r($e, TRUE)), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    return drupal_goto();
   }
 
-  // var_dump($auth0); die;
-
-  // Check the state, if present
-  $query = drupal_get_query_parameters();
-  if (isset($query['state']) && !drupal_valid_token($query['state'], 'auth0_state')) {
-    drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0', 'Could not validate the state', array(), WATCHDOG_ERROR);
-    return drupal_goto(); 
-  }
-
-  /**
-    * Validate the ID Token
-    */
-  $auth0_domain = 'https://' . $domain . '/';
-  $auth0_settings = array();
-  $auth0_settings['authorized_iss'] = [$auth0_domain];
-  $auth0_settings['supported_algs'] = [$jwt_signature_alg];
-  $auth0_settings['valid_audiences'] = [$client_id];
-  $auth0_settings['client_secret'] = $client_secret;
-  $auth0_settings['secret_base64_encoded'] = $secret_base64_encoded;
-  $jwt_verifier = new JWTVerifier($auth0_settings);
+  // Validate the ID Token — state validation is handled inside exchange() above.
   try {
-    $user = $jwt_verifier->verifyAndDecode($id_token);
+    $user = $auth0->decode($id_token);
   }
   catch(\Exception $e) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
     watchdog('Auth0', 'Error validating the token: '.$e->getMessage(), array(), WATCHDOG_ERROR);
-    return drupal_goto(); 
+    return drupal_goto();
   }
 
 
@@ -271,9 +236,9 @@ function auth0_callback() {
       $user_info['user_id'] = $user_info['sub'];
     }
 
-    if ($user_info['sub'] != $user->sub) {
+    if ($user_info['sub'] != $user->getSubject()) {
       drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-      watchdog('Auth0', 'Failed to verify JWT sub: '.$e->getMessage(), array(), WATCHDOG_ERROR);
+      watchdog('Auth0', 'Failed to verify JWT sub', array(), WATCHDOG_ERROR);
       return drupal_goto();
     }
 
@@ -721,6 +686,13 @@ function auth0_basic_settings_form($form, &$form_state) {
     '#description' => t('Application secret, copy from the auth0 dashboard.'),
     '#required' => TRUE,
   );
+  $form['auth0_cookie_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Cookie secret'),
+    '#default_value' => variable_get('auth0_cookie_secret', ''),
+    '#description' => t('A long, random string used to encrypt the session cookie. Generate one with: openssl rand -hex 32'),
+    '#required' => TRUE,
+  );
   $form['auth0_secret_base64_encoded'] = array(
     '#type' => 'checkbox',
     '#title' => t('Client Secret is Base64 Encoded'),
@@ -1000,40 +972,21 @@ function auth0_form_user_profile_form_alter(&$form, $form_state) {
   }
 }
 
-function _auth0_generate_authorize_url($prompt) {
-  $query = array(
-    'redirect_uri' => url('auth0/callback', array('absolute' => TRUE, 'query' => drupal_get_destination())),
-    'connection' => null,
-    'response_type' => 'code'
-  );
-
-  /* Overwrite values if needed */
-  if (is_array($prompt)) $query = array_merge($query, $prompt);
-
-  /* Set the state, if not passed in */
+function _auth0_generate_authorize_url($prompt = FALSE) {
   if (!isset($_SESSION['auth0_session_started'])) {
     $_SESSION['auth0_session_started'] = TRUE;
     drupal_session_start();
   }
 
-  $state = isset($query['state']) ? $query['state'] : drupal_get_token('auth0_state');
-  $response_type = $query['response_type'];
-  $redirect_uri = $query['redirect_uri'];
-  $connection = $query['connection'];
+  $redirect_uri = url('auth0/callback', array('absolute' => TRUE, 'query' => drupal_get_destination()));
+  $auth0 = _auth0_sdk($redirect_uri);
 
-  unset($query['state']);
-  unset($query['response_type']);
-  unset($query['redirect_uri']);
-  unset($query['connection']);
+  $params = [];
+  if (is_array($prompt) && isset($prompt['prompt'])) {
+    $params['prompt'] = $prompt['prompt'];
+  }
 
-  $additional_params = [];
-  $additional_params['scope'] = 'openid profile email';
-  $additional_params = array_merge($additional_params, $query);
-
-  $domain = getDomain();
-  $client_id = check_plain(variable_get("auth0_client_id", ''));
-  $auth0Api = new Authentication($domain, $client_id);
-  return $auth0Api->get_authorize_link($response_type, $redirect_uri, $connection, $state, $additional_params);
+  return $auth0->login(NULL, $params);
 }
 
 /**
@@ -1080,7 +1033,10 @@ function template_preprocess_auth0_lock(&$vars) {
     $_SESSION['auth0_session_started'] = TRUE;
     drupal_session_start();
   }
-  $vars['params']['auth']['params']['state'] = isset($vars['params']['auth']['params']['state']) ? $vars['params']['auth']['params']['state'] : drupal_get_token('auth0_state');
+  $auth0 = _auth0_sdk(url('auth0/callback', array('absolute' => TRUE)));
+  $transient_handler = new TransientStoreHandler(new SessionStore($auth0->configuration()));
+  $vars['params']['auth']['params']['state'] = isset($vars['params']['auth']['params']['state']) ? $vars['params']['auth']['params']['state'] : $transient_handler->issue('state');
+  $vars['params']['auth']['params']['nonce'] = isset($vars['params']['auth']['params']['nonce']) ? $vars['params']['auth']['params']['nonce'] : $transient_handler->issue('nonce');
 
   if (auth0_enabled('signup')) {
     $vars['params']['allowSignUp'] = TRUE;
@@ -1263,22 +1219,6 @@ function auth0_user_presave(&$edit, $account, $category) {
 
       // Create the user in Auth0 with a DB connection
       try {
-        $domain = getDomain();
-        $client_id = variable_get('auth0_client_id', '');
-        $client_secret = variable_get('auth0_client_secret', '');
-        $audience = 'https://' . check_plain(variable_get("auth0_domain", '')) . '/api/v2/';
-
-        $auth0 = new Authentication($domain, $client_id);
-
-        $auth0_api = $auth0->client_credentials(array(
-          'client_id' => $client_id,
-          'client_secret' => $client_secret,
-          'audience' => $audience));
-
-        $access_token = $auth0_api['access_token'];
-
-        $mgmtClient = new Management($access_token, $domain);
-
         $fields = ['mail', 'name'];
         foreach ($fields as $field) {
           if (isset($account->$field) && !empty($account->$field)) {
@@ -1292,29 +1232,29 @@ function auth0_user_presave(&$edit, $account, $category) {
           }
         }
 
-        $api_result = $mgmtClient->users->create(array(
+        $auth0 = _auth0_sdk();
+        $mgmtClient = $auth0->management();
+        $mgmtClient->users()->create([
           'connection' => $connection,
           'email' => $mail,
           'password' => user_password() . '!',  // Satisfy Auth0 password policy
           'email_verified' => TRUE,
           'nickname' => $name,
-          'app_metadata' => json_decode(variable_get('auth0_user_push_app_metadata', ''), true)
-        ));
+          'app_metadata' => json_decode(variable_get('auth0_user_push_app_metadata', ''), true),
+        ]);
 
         drupal_set_message(t('The account has been created in Auth0.'), 'status');
 
         try {
           // Send a Link for a passwordless login
-
           $authParams = array(
             'redirect_uri' => url('auth0/callback', array('absolute' => TRUE, 'query' => array(
                   'destination' => variable_get('site_frontpage', 'node')))
             ),
-            'scope' => 'openid profile email',
-            'response_type' => 'code'
+            'response_type' => 'code',
           );
 
-          $link_result = $auth0->email_passwordless_start($mail, 'link', $authParams);
+          $auth0->authentication()->emailPasswordlessStart($mail, 'link', $authParams);
 
           drupal_set_message(t('An Email with a one-time link has been sent.'), 'status');
         }
@@ -1322,10 +1262,6 @@ function auth0_user_presave(&$edit, $account, $category) {
           drupal_set_message(t('There was a problem sending the one-time link from Auth0.'), 'error');
           watchdog('Auth0', 'Error creating passwordless start: '.$e->getMessage(), array(), WATCHDOG_ERROR);
         }
-      }
-      catch (ClientException $e) {
-        drupal_set_message(t('There was a problem creating the user in Auth0.'), 'error');
-        watchdog('Auth0', 'Error creating client API session: '.$e->getMessage(), array(), WATCHDOG_ERROR);
       }
       catch(\Exception $e) {
         drupal_set_message(t('There was a problem creating the user in Auth0.'), 'error');
