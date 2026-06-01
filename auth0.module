@@ -142,6 +142,11 @@ function auth0_verify_email_page() {
     return drupal_goto();
   }
 
+  if (!auth0_check_dependencies()) {
+    auth0_missing_dependencies_message();
+    return drupal_goto();
+  }
+
   $token = $_REQUEST['idToken'];
   $auth0 = _auth0_sdk();
 
@@ -177,6 +182,11 @@ function auth0_callback() {
   drupal_page_is_cacheable(FALSE);
 
   if (!auth0_enabled('login')) {
+    return drupal_goto();
+  }
+
+  if (!auth0_check_dependencies()) {
+    auth0_missing_dependencies_message();
     return drupal_goto();
   }
 
