@@ -10,17 +10,16 @@ use Auth0\SDK\Utility\Toolkit;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Class Tickets.
  * Handles requests to the Tickets endpoint of the v2 Management API.
  *
- * @link https://auth0.com/docs/api/management/v2#!/Tickets
+ * @see https://auth0.com/docs/api/management/v2#!/Tickets
  */
 final class Tickets extends ManagementEndpoint implements TicketsInterface
 {
     public function createEmailVerification(
         string $userId,
         ?array $body = null,
-        ?RequestOptions $options = null
+        ?RequestOptions $options = null,
     ): ResponseInterface {
         [$userId] = Toolkit::filter([$userId])->string()->trim();
         [$body] = Toolkit::filter([$body])->array()->trim();
@@ -32,12 +31,11 @@ final class Tickets extends ManagementEndpoint implements TicketsInterface
         /** @var array<mixed> $body */
 
         return $this->getHttpClient()
-            ->method('post')
-            ->addPath('tickets', 'email-verification')
+            ->method('post')->addPath(['tickets', 'email-verification'])
             ->withBody(
-                (object) Toolkit::merge([
+                (object) Toolkit::merge([[
                     'user_id' => $userId,
-                ], $body)
+                ], $body]),
             )
             ->withOptions($options)
             ->call();
@@ -45,7 +43,7 @@ final class Tickets extends ManagementEndpoint implements TicketsInterface
 
     public function createPasswordChange(
         array $body,
-        ?RequestOptions $options = null
+        ?RequestOptions $options = null,
     ): ResponseInterface {
         [$body] = Toolkit::filter([$body])->array()->trim();
 
@@ -54,8 +52,7 @@ final class Tickets extends ManagementEndpoint implements TicketsInterface
         ])->isArray();
 
         return $this->getHttpClient()
-            ->method('post')
-            ->addPath('tickets', 'password-change')
+            ->method('post')->addPath(['tickets', 'password-change'])
             ->withBody((object) $body)
             ->withOptions($options)
             ->call();

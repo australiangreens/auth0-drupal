@@ -4,31 +4,26 @@ declare(strict_types=1);
 
 namespace Auth0\SDK\Event\Psr14Store;
 
-use Auth0\SDK\Contract\Auth0Event;
-use Auth0\SDK\Contract\StoreInterface;
+use Auth0\SDK\Contract\{Auth0Event, StoreInterface};
 
 final class Delete implements Auth0Event
 {
-    private StoreInterface $store;
-    private string $key;
     private ?bool $success = null;
 
     public function __construct(
-        StoreInterface $store,
-        string $key
+        private StoreInterface $store,
+        private string $key,
     ) {
-        $this->store = $store;
-        $this->key = $key;
-    }
-
-    public function getStore(): StoreInterface
-    {
-        return $this->store;
     }
 
     public function getKey(): string
     {
         return $this->key;
+    }
+
+    public function getStore(): StoreInterface
+    {
+        return $this->store;
     }
 
     public function getSuccess(): ?bool
@@ -37,9 +32,10 @@ final class Delete implements Auth0Event
     }
 
     public function setSuccess(
-        ?bool $success
+        ?bool $success,
     ): self {
         $this->success = $success;
+
         return $this;
     }
 }

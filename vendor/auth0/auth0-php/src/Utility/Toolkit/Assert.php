@@ -4,33 +4,90 @@ declare(strict_types=1);
 
 namespace Auth0\SDK\Utility\Toolkit;
 
-/**
- * Class Assert.
- */
+use Exception;
+use Throwable;
+
+use function is_array;
+use function is_bool;
+use function is_int;
+use function is_string;
+
 final class Assert
 {
     /**
-     * Values to process.
+     * ArrayProcessor Constructor.
      *
-     * @var array<array{0: mixed, 1: \Throwable}>
-     */
-    private array $subjects;
-
-    /**
-     * ArrayProcessor Constructor
-     *
-     * @param array<array{0: mixed, 1: \Throwable}> $subjects Values to process.
+     * @param array<array{0: mixed, 1: Throwable}> $subjects values to process
      */
     public function __construct(
-        array $subjects
+        private array $subjects,
     ) {
-        $this->subjects = $subjects;
+    }
+
+    /**
+     * Check that a variable is an array and is not empty.
+     *
+     * @throws Exception when subject is not an array or is empty
+     */
+    public function isArray(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_array($value)) {
+                throw $exception;
+            }
+
+            if ([] === $value) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is a boolean and is not null.
+     *
+     * @throws Exception when subject is not a boolean or is null
+     */
+    public function isBoolean(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_bool($value)) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is a non-empty string that contains a valid email address.
+     *
+     * @throws Exception when subject is not a valid email address
+     */
+    public function isEmail(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (false === filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is an integer and is not null.
+     *
+     * @throws Exception when subject is not an integer or is null
+     */
+    public function isInteger(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_int($value)) {
+                throw $exception;
+            }
+        }
     }
 
     /**
      * Check for invalid permissions with an array of permissions.
      *
-     * @throws \Exception When subject is not a permissions array or is empty.
+     * @throws Exception when subject is not a permissions array or is empty
      */
     public function isPermissions(): void
     {
@@ -39,7 +96,7 @@ final class Assert
                 throw $exception;
             }
 
-            if ($value === []) {
+            if ([] === $value) {
                 throw $exception;
             }
 
@@ -58,7 +115,7 @@ final class Assert
     /**
      * Check that a variable is a string and is not empty.
      *
-     * @throws \Exception When subject is not a string or is empty.
+     * @throws Exception when subject is not a string or is empty
      */
     public function isString(): void
     {
@@ -67,39 +124,7 @@ final class Assert
                 throw $exception;
             }
 
-            if (mb_strlen($value) === 0) {
-                throw $exception;
-            }
-        }
-    }
-
-    /**
-     * Check that a variable is a non-empty string that contains a valid email address.
-     *
-     * @throws \Exception When subject is not a valid email address.
-     */
-    public function isEmail(): void
-    {
-        foreach ($this->subjects as [$value, $exception]) {
-            if (filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
-                throw $exception;
-            }
-        }
-    }
-
-    /**
-     * Check that a variable is an array and is not empty.
-     *
-     * @throws \Exception When subject is not an array or is empty.
-     */
-    public function isArray(): void
-    {
-        foreach ($this->subjects as [$value, $exception]) {
-            if (! is_array($value)) {
-                throw $exception;
-            }
-
-            if ($value === []) {
+            if (0 === mb_strlen($value)) {
                 throw $exception;
             }
         }

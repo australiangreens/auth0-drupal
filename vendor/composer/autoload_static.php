@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit503a8656a28faec1c085ceafec73e898
+class ComposerStaticInit047bde3d0810e2cc11632bf802035c63
 {
     public static $files = array (
         '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
@@ -13,7 +13,7 @@ class ComposerStaticInit503a8656a28faec1c085ceafec73e898
     );
 
     public static $prefixLengthsPsr4 = array (
-        'S' => 
+        'S' =>
         array (
             'Symfony\\Polyfill\\Php80\\' => 23,
             'Symfony\\Polyfill\\Php73\\' => 23,
@@ -21,7 +21,7 @@ class ComposerStaticInit503a8656a28faec1c085ceafec73e898
             'Symfony\\Contracts\\HttpClient\\' => 29,
             'Symfony\\Component\\HttpClient\\' => 29,
         ),
-        'P' => 
+        'P' =>
         array (
             'Psr\\Log\\' => 8,
             'Psr\\Http\\Message\\' => 17,
@@ -29,99 +29,105 @@ class ComposerStaticInit503a8656a28faec1c085ceafec73e898
             'Psr\\EventDispatcher\\' => 20,
             'Psr\\Container\\' => 14,
             'Psr\\Cache\\' => 10,
+            'PsrDiscovery\\' => 13,
         ),
-        'N' => 
+        'N' =>
         array (
             'Nyholm\\Psr7\\' => 12,
         ),
-        'H' => 
+        'H' =>
         array (
-            'Http\\Promise\\' => 13,
             'Http\\Message\\MultipartStream\\' => 29,
             'Http\\Discovery\\' => 15,
-            'Http\\Client\\' => 12,
         ),
-        'C' => 
+        'C' =>
         array (
+            'Composer\\Semver\\' => 16,
             'Composer\\Installers\\' => 20,
         ),
-        'A' => 
+        'A' =>
         array (
             'Auth0\\SDK\\' => 10,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'Symfony\\Polyfill\\Php80\\' => 
+        'Symfony\\Polyfill\\Php80\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php80',
         ),
-        'Symfony\\Polyfill\\Php73\\' => 
+        'Symfony\\Polyfill\\Php73\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php73',
         ),
-        'Symfony\\Contracts\\Service\\' => 
+        'Symfony\\Contracts\\Service\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/service-contracts',
         ),
-        'Symfony\\Contracts\\HttpClient\\' => 
+        'Symfony\\Contracts\\HttpClient\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/http-client-contracts',
         ),
-        'Symfony\\Component\\HttpClient\\' => 
+        'Symfony\\Component\\HttpClient\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/http-client',
         ),
-        'Psr\\Log\\' => 
+        'Psr\\Log\\' =>
         array (
-            0 => __DIR__ . '/..' . '/psr/log/Psr/Log',
+            0 => __DIR__ . '/..' . '/psr/log/src',
         ),
-        'Psr\\Http\\Message\\' => 
+        'Psr\\Http\\Message\\' =>
         array (
-            0 => __DIR__ . '/..' . '/psr/http-message/src',
-            1 => __DIR__ . '/..' . '/psr/http-factory/src',
+            0 => __DIR__ . '/..' . '/psr/http-factory/src',
+            1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
-        'Psr\\Http\\Client\\' => 
+        'Psr\\Http\\Client\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/http-client/src',
         ),
-        'Psr\\EventDispatcher\\' => 
+        'Psr\\EventDispatcher\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/event-dispatcher/src',
         ),
-        'Psr\\Container\\' => 
+        'Psr\\Container\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/container/src',
         ),
-        'Psr\\Cache\\' => 
+        'Psr\\Cache\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/cache/src',
         ),
-        'Nyholm\\Psr7\\' => 
+        'PsrDiscovery\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/psr-discovery/log-implementations/src',
+            1 => __DIR__ . '/..' . '/psr-discovery/http-factory-implementations/src',
+            2 => __DIR__ . '/..' . '/psr-discovery/http-client-implementations/src',
+            3 => __DIR__ . '/..' . '/psr-discovery/event-dispatcher-implementations/src',
+            4 => __DIR__ . '/..' . '/psr-discovery/container-implementations/src',
+            5 => __DIR__ . '/..' . '/psr-discovery/cache-implementations/src',
+            6 => __DIR__ . '/..' . '/psr-discovery/discovery/src',
+        ),
+        'Nyholm\\Psr7\\' =>
         array (
             0 => __DIR__ . '/..' . '/nyholm/psr7/src',
         ),
-        'Http\\Promise\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/php-http/promise/src',
-        ),
-        'Http\\Message\\MultipartStream\\' => 
+        'Http\\Message\\MultipartStream\\' =>
         array (
             0 => __DIR__ . '/..' . '/php-http/multipart-stream-builder/src',
         ),
-        'Http\\Discovery\\' => 
+        'Http\\Discovery\\' =>
         array (
             0 => __DIR__ . '/..' . '/php-http/discovery/src',
         ),
-        'Http\\Client\\' => 
+        'Composer\\Semver\\' =>
         array (
-            0 => __DIR__ . '/..' . '/php-http/httplug/src',
+            0 => __DIR__ . '/..' . '/composer/semver/src',
         ),
-        'Composer\\Installers\\' => 
+        'Composer\\Installers\\' =>
         array (
             0 => __DIR__ . '/..' . '/composer/installers/src/Composer/Installers',
         ),
-        'Auth0\\SDK\\' => 
+        'Auth0\\SDK\\' =>
         array (
             0 => __DIR__ . '/..' . '/auth0/auth0-php/src',
         ),
@@ -140,9 +146,9 @@ class ComposerStaticInit503a8656a28faec1c085ceafec73e898
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit503a8656a28faec1c085ceafec73e898::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit503a8656a28faec1c085ceafec73e898::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit503a8656a28faec1c085ceafec73e898::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit047bde3d0810e2cc11632bf802035c63::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit047bde3d0810e2cc11632bf802035c63::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit047bde3d0810e2cc11632bf802035c63::$classMap;
 
         }, null, ClassLoader::class);
     }

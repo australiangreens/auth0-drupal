@@ -4,30 +4,21 @@ declare(strict_types=1);
 
 namespace Auth0\SDK\API\Management;
 
-use Auth0\SDK\Utility\HttpClient;
-use Auth0\SDK\Utility\HttpRequest;
-use Auth0\SDK\Utility\HttpResponsePaginator;
+use Auth0\SDK\Utility\{HttpClient, HttpRequest, HttpResponsePaginator};
 
 /**
- * Class ManagementEndpoint.
  * Extended by Management API endpoints classes.
  */
 abstract class ManagementEndpoint
 {
     /**
-     * Injected HttpClient instance to use.
-     */
-    private HttpClient $httpClient;
-
-    /**
      * ManagementEndpoint constructor.
      *
-     * @param HttpClient $httpClient HttpClient instance to use.
+     * @param HttpClient $httpClient httpClient instance to use
      */
-    public function __construct(
-        HttpClient $httpClient
+    final public function __construct(
+        private HttpClient $httpClient,
     ) {
-        $this->httpClient = $httpClient;
     }
 
     /**
@@ -52,5 +43,11 @@ abstract class ManagementEndpoint
     final public function getResponsePaginator(): HttpResponsePaginator
     {
         return new HttpResponsePaginator($this->getHttpClient());
+    }
+
+    final public static function instance(
+        HttpClient $httpClient,
+    ): static {
+        return new static($httpClient);
     }
 }

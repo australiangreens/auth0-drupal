@@ -4,108 +4,49 @@ declare(strict_types=1);
 
 namespace Auth0\SDK\Token;
 
+use const OPENSSL_ALGO_SHA256;
+use const OPENSSL_ALGO_SHA384;
+use const OPENSSL_ALGO_SHA512;
+
 use Auth0\SDK\Configuration\SdkConfiguration;
 use Auth0\SDK\Token;
-use Auth0\SDK\Utility\HttpClient;
-use Auth0\SDK\Utility\HttpRequest;
-use Auth0\SDK\Utility\HttpResponse;
-use Psr\Cache\CacheItemPoolInterface;
+use Auth0\SDK\Utility\{HttpClient, HttpRequest, HttpResponse};
+use OpenSSLAsymmetricKey;
+use Psr\Cache\{CacheItemInterface, CacheItemPoolInterface};
+use Throwable;
 
-/**
- * Class Verifier.
- */
+use function count;
+use function is_array;
+use function is_bool;
+
 final class Verifier
 {
     /**
-     * A string representing the headers and claims portions of a JWT.
-     */
-    private string $payload;
-
-    /**
-     * A string representing the signature portion of a JWT.
-     */
-    private string $signature;
-
-    /**
-     * An array of the headers for the JWT. Expects an 'alg' header, and in the case of RS256, a 'kid' header.
-     *
-     * @var array<int|string>
-     */
-    private array $headers;
-
-    /**
-     * Client Secret found in the Application settings for verifying HS256 tokens.
-     */
-    private ?string $clientSecret = null;
-
-    /**
-     * Algorithm to use for verification. Expects either RS256 or HS256. Defaults to RS256.
-     */
-    private ?string $algorithm = null;
-
-    /**
-     * URI to the JWKS when verifying RS256 tokens.
-     */
-    private ?string $jwksUri = null;
-
-    /**
-     * Time in seconds to keep JWKS records cached. Defaults to 60.
-     */
-    private ?int $cacheExpires = null;
-
-    /**
-     * An PSR-6 CacheItemPoolInterface instance to cache JWKS results within.
-     */
-    private ?CacheItemPoolInterface $cache = null;
-
-    /**
-     * Instance of SdkConfiguration, for shared configuration across classes.
-     */
-    private SdkConfiguration $configuration;
-
-    /**
-     * Mocked responses for HTTP requests; only used in unit tests.
-     *
-     * @var array<object>
-     */
-    private ?array $mockedHttpResponses = null;
-
-    /**
      * Constructor for the Token Verifier class.
      *
-     * @param string                      $payload             A string representing the headers and claims portions of a JWT.
-     * @param string                      $signature           A string representing the signature portion of a JWT.
+     * @param SdkConfiguration            $configuration       SDK configuration options.
+     * @param string                      $payload             a string representing the headers and claims portions of a JWT
+     * @param string                      $signature           a string representing the signature portion of a JWT
      * @param array<int|string>           $headers             An array of the headers for the JWT. Expects an 'alg' header, and in the case of RS256, a 'kid' header.
-     * @param string|null                 $algorithm           Optional. Algorithm to use for verification. Expects either RS256 or HS256. Defaults to RS256.
-     * @param string|null                 $jwksUri             Optional. URI to the JWKS when verifying RS256 tokens.
-     * @param string|null                 $clientSecret        Optional. Client Secret found in the Application settings for verifying HS256 tokens.
-     * @param int|null                    $cacheExpires        Optional. Time in seconds to keep JWKS records cached.
-     * @param CacheItemPoolInterface|null $cache               Optional. A PSR-6 CacheItemPoolInterface instance to cache JWKS results within.
-     * @param array<object>|null          $mockedHttpResponses Optional. Only intended for unit testing purposes.
+     * @param null|string                 $algorithm           Optional. Algorithm to use for verification. Expects either RS256 or HS256. Defaults to RS256.
+     * @param null|string                 $jwksUri             Optional. URI to the JWKS when verifying RS256 tokens.
+     * @param null|string                 $clientSecret        Optional. Client Secret found in the Application settings for verifying HS256 tokens.
+     * @param null|int                    $cacheExpires        Optional. Time in seconds to keep JWKS records cached.
+     * @param null|CacheItemPoolInterface $cache               Optional. A PSR-6 CacheItemPoolInterface instance to cache JWKS results within.
+     * @param null|array<object>          $mockedHttpResponses Optional. Only intended for unit testing purposes.
      */
     public function __construct(
-        SdkConfiguration $configuration,
-        string $payload,
-        string $signature,
-        array $headers,
-        ?string $algorithm = null,
-        ?string $jwksUri = null,
-        ?string $clientSecret = null,
-        ?int $cacheExpires = null,
-        ?CacheItemPoolInterface $cache = null,
-        ?array & $mockedHttpResponses = null
+        private SdkConfiguration $configuration,
+        private string $payload,
+        private string $signature,
+        private array $headers,
+        private ?string $algorithm = null,
+        private ?string $jwksUri = null,
+        private ?string $clientSecret = null,
+        private ?int $cacheExpires = null,
+        private ?CacheItemPoolInterface $cache = null,
+        private ?array &$mockedHttpResponses = null,
     ) {
-        $this->configuration = $configuration;
-        $this->payload = $payload;
-        $this->signature = $signature;
-        $this->headers = $headers;
-        $this->algorithm = $algorithm;
-        $this->jwksUri = $jwksUri;
-        $this->clientSecret = $clientSecret;
-        $this->cacheExpires = $cacheExpires;
-        $this->cache = $cache;
-        $this->mockedHttpResponses = & $mockedHttpResponses;
-
         $this->verify();
     }
 
@@ -120,41 +61,64 @@ final class Verifier
     {
         $alg = $this->headers['alg'] ?? null;
 
-        if ($alg === null) {
+        if (null === $alg) {
             throw \Auth0\SDK\Exception\InvalidTokenException::missingAlgHeader();
         }
 
-        if ($this->algorithm !== null && $this->algorithm !== $alg) {
+        if (null !== $this->algorithm && $this->algorithm !== $alg) {
             throw \Auth0\SDK\Exception\InvalidTokenException::unexpectedSigningAlgorithm($this->algorithm, (string) $alg);
         }
 
-        if ($alg === Token::ALGO_RS256) {
-            $kid = $this->headers['kid'] ?? null;
+        $usesHmac = match ($alg) {
+            Token::ALGO_HS256, Token::ALGO_HS384, Token::ALGO_HS512 => true,
+            default => false,
+        };
 
-            if ($kid === null) {
-                throw \Auth0\SDK\Exception\InvalidTokenException::missingKidHeader();
+        if ($usesHmac) {
+            if (null === $this->clientSecret) {
+                throw \Auth0\SDK\Exception\InvalidTokenException::requiresClientSecret();
             }
 
-            $key = $this->getKey((string) $kid);
-            $valid = openssl_verify($this->payload, $this->signature, $key, OPENSSL_ALGO_SHA256);
-            $this->freeKey($key);
+            $digest = match ($alg) {
+                Token::ALGO_HS256 => 'sha256',
+                Token::ALGO_HS384 => 'sha384',
+                Token::ALGO_HS512 => 'sha512',
+                default => throw \Auth0\SDK\Exception\InvalidTokenException::unsupportedSigningAlgorithm((string) $alg),
+            };
 
-            if ($valid !== 1) {
+            $hash = hash_hmac($digest, $this->payload, $this->clientSecret, true);
+            $valid = hash_equals($hash, $this->signature);
+
+            if (! $valid) {
                 throw \Auth0\SDK\Exception\InvalidTokenException::badSignature();
             }
 
             return $this;
         }
 
-        if ($alg === Token::ALGO_HS256) {
-            if ($this->clientSecret === null) {
-                throw \Auth0\SDK\Exception\InvalidTokenException::requiresClientSecret();
+        $usesRsa = match ($alg) {
+            Token::ALGO_RS256, Token::ALGO_RS384, Token::ALGO_RS512 => true,
+            default => false,
+        };
+
+        if ($usesRsa) {
+            $digest = match ($alg) {
+                Token::ALGO_RS256 => OPENSSL_ALGO_SHA256,
+                Token::ALGO_RS384 => OPENSSL_ALGO_SHA384,
+                Token::ALGO_RS512 => OPENSSL_ALGO_SHA512,
+                default => throw \Auth0\SDK\Exception\InvalidTokenException::unsupportedSigningAlgorithm((string) $alg),
+            };
+
+            $kid = $this->headers['kid'] ?? null;
+
+            if (null === $kid) {
+                throw \Auth0\SDK\Exception\InvalidTokenException::missingKidHeader();
             }
 
-            $hash = hash_hmac('sha256', $this->payload, $this->clientSecret, true);
-            $valid = hash_equals($this->signature, $hash);
+            $key = $this->getKey((string) $kid);
+            $valid = openssl_verify($this->payload, $this->signature, $key, $digest);
 
-            if (! $valid) {
+            if (1 !== $valid) {
                 throw \Auth0\SDK\Exception\InvalidTokenException::badSignature();
             }
 
@@ -165,89 +129,17 @@ final class Verifier
     }
 
     /**
-     * Query a JWKS endpoint and return an array representing the key set.
+     * Query a JWKS endpoint for a matching key. Parse and return a OpenSSLAsymmetricKey (PHP 8.0+) suitable for verification.
      *
-     * @param string|null $expectsKid Optional. A key id we're currently expecting to retrieve. When retrieving a cache response, if the key isn't present, it will invalid the cache and fetch an updated JWKS.
-     *
-     * @return array<int|string, mixed>
-     *
-     * @throws \Auth0\SDK\Exception\InvalidTokenException When the JWKS uri is not properly configured, or is unreachable.
-     */
-    private function getKeySet(
-        ?string $expectsKid = null
-    ): array {
-        if ($this->jwksUri === null) {
-            throw \Auth0\SDK\Exception\InvalidTokenException::requiresJwksUri();
-        }
-
-        $jwksCacheKey = hash('sha256', $this->jwksUri);
-        $jwksUri = parse_url($this->jwksUri);
-
-        // @phpstan-ignore-next-line
-        if (! is_string($jwksCacheKey) || ! is_array($jwksUri)) {
-            return [];
-        }
-
-        $scheme = $jwksUri['scheme'] ?? 'https';
-        $path = $jwksUri['path'] ?? '/.well-known/jwks.json';
-        $host = $jwksUri['host'] ?? $this->configuration->getDomain();
-
-        $response = [];
-
-        if ($this->cache !== null) {
-            $item = $this->cache->getItem($jwksCacheKey);
-            if ($item->isHit()) {
-                /** @var array<mixed> $value */
-                $value = $item->get();
-
-                if ($expectsKid === null || isset($value[$expectsKid])) {
-                    return $value;
-                }
-            }
-        }
-
-        $keys = (new HttpRequest($this->configuration, HttpClient::CONTEXT_GENERIC_CLIENT, 'get', $path, [], $scheme . '://' . $host, $this->mockedHttpResponses))->call();
-
-        if (HttpResponse::wasSuccessful($keys)) {
-            try {
-                $keys = HttpResponse::decodeContent($keys);
-            } catch (\Throwable $throwable) {
-                return [];
-            }
-
-            if (is_array($keys) && isset($keys['keys']) && count($keys['keys']) !== 0) {
-                foreach ($keys['keys'] as $key) {
-                    if (isset($key['kid']) && isset($key['x5c']) && is_array($key['x5c']) && $key['x5c'] !== []) {
-                        $response[(string) $key['kid']] = $key;
-                    }
-                }
-            }
-
-            if ($response !== [] && $this->cache !== null) {
-                $item = $this->cache->getItem($jwksCacheKey);
-                $item->set($response);
-                $item->expiresAfter($this->cacheExpires ?? 60);
-                $this->cache->save($item);
-            }
-        }
-
-        return $response;
-    }
-
-    /**
-     * Query a JWKS endpoint for a matching key. Parse and return a OpenSSLAsymmetricKey (PHP 8.0+) or resource (PHP < 8.0) suitable for verification.
-     *
-     * @param string $kid The 'kid' header value to use for key lookup.
-     *
-     * @return \OpenSSLAsymmetricKey|resource
+     * @param string $kid the 'kid' header value to use for key lookup
      *
      * @throws \Auth0\SDK\Exception\InvalidTokenException When unable to retrieve key. See error message for details.
      *
      * @psalm-suppress UndefinedDocblockClass
      */
     private function getKey(
-        string $kid
-    ) {
+        string $kid,
+    ): OpenSSLAsymmetricKey {
         /** @var array<array{x5c: array<int|string>}> $keys */
         $keys = $this->getKeySet($kid);
 
@@ -263,7 +155,7 @@ final class Verifier
 
         $details = openssl_pkey_get_details($key);
 
-        if ($details === false || $details['type'] !== OPENSSL_KEYTYPE_RSA) {
+        if (false === $details || OPENSSL_KEYTYPE_RSA !== $details['type']) {
             throw \Auth0\SDK\Exception\InvalidTokenException::badSignatureIncompatibleAlgorithm();
         }
 
@@ -271,29 +163,73 @@ final class Verifier
     }
 
     /**
-     * Free key resource in PHP <8.0.
+     * Query a JWKS endpoint and return an array representing the key set.
      *
-     * @param mixed $key An instance of OpenSSLAsymmetricKey (PHP 8.0+) or 'resource' (PHP <8.0).
+     * @param null|string $expectsKid Optional. A key id we're currently expecting to retrieve. When retrieving a cache response, if the key isn't present, it will invalid the cache and fetch an updated JWKS.
      *
-     * @codeCoverageIgnore
+     * @throws \Auth0\SDK\Exception\InvalidTokenException when the JWKS uri is not properly configured, or is unreachable
+     *
+     * @return array<int|string, mixed>
      */
-    private function freeKey(
-        $key
-    ): void {
-        /**
-         * openssl_free_key is deprecated in PHP 8.0, so avoid calling it there:
-         *
-         * @psalm-suppress UndefinedClass
-         */
-        if ($key instanceof \OpenSSLAsymmetricKey) {
-            return;
+    private function getKeySet(
+        ?string $expectsKid = null,
+    ): array {
+        if (null === $this->jwksUri) {
+            throw \Auth0\SDK\Exception\InvalidTokenException::requiresJwksUri();
         }
 
-        /**
-         * TODO: Remove when PHP 7.x support is EOL
-         *
-         * @psalm-suppress MixedArgument
-         */
-        openssl_free_key($key); // phpcs:ignore
+        $jwksCacheKey = hash('sha256', $this->jwksUri);
+        $jwksUri = parse_url($this->jwksUri);
+
+        // @phpstan-ignore-next-line
+        if (! $jwksCacheKey || ! is_array($jwksUri)) {
+            return [];
+        }
+
+        $scheme = $jwksUri['scheme'] ?? 'https';
+        $path = $jwksUri['path'] ?? '/.well-known/jwks.json';
+        $host = $jwksUri['host'] ?? $this->configuration->getDomain() ?? '';
+        $item = null;
+
+        $response = [];
+
+        if ($this->cache instanceof CacheItemPoolInterface) {
+            $item = $this->cache->getItem($jwksCacheKey);
+
+            if ($item->isHit()) {
+                /** @var array<mixed> $value */
+                $value = $item->get();
+
+                if (null === $expectsKid || isset($value[$expectsKid])) {
+                    return $value;
+                }
+            }
+        }
+
+        $keys = (new HttpRequest($this->configuration, HttpClient::CONTEXT_GENERIC_CLIENT, 'get', $path, [], $scheme . '://' . $host, $this->mockedHttpResponses))->call();
+
+        if (HttpResponse::wasSuccessful($keys)) {
+            try {
+                $keys = HttpResponse::decodeContent($keys);
+            } catch (Throwable) {
+                return [];
+            }
+
+            if (is_array($keys) && isset($keys['keys']) && 0 !== count($keys['keys'])) {
+                foreach ($keys['keys'] as $key) {
+                    if (isset($key['kid'], $key['x5c']) && is_array($key['x5c']) && [] !== $key['x5c']) {
+                        $response[(string) $key['kid']] = $key;
+                    }
+                }
+            }
+
+            if ([] !== $response && $item instanceof CacheItemInterface) {
+                $item->set($response);
+                $item->expiresAfter($this->cacheExpires ?? 60);
+                $this->cache->save($item);
+            }
+        }
+
+        return $response;
     }
 }

@@ -54,10 +54,23 @@ function auth0_uninstall() {
 }
 
 /**
- * Add auth0_cookie_secret variable required by auth0-php SDK v8.
+ * Generate the auth0_cookie_secret required by auth0-php SDK v8.
  */
 function auth0_update_7201() {
-  // No schema change needed — variable_get/set handles this.
-  // Deployers must set auth0_cookie_secret in settings.php or via the admin UI.
+  // SdkConfiguration::validateStateWebApp() throws without a cookie secret, so
+  // every SDK call site fails until this variable exists. Generating it here
+  // rather than leaving it to an administrator closes the window between the
+  // deployment and someone visiting the settings form, during which no user
+  // could log in. Sites that pin the value in settings.php are left alone.
+  $existing = variable_get('auth0_cookie_secret', '');
+
+  if (!empty($existing)) {
+    return t('auth0_cookie_secret is already set; left unchanged.');
+  }
+
+  // The SDK warns below 32 bytes; drupal_random_bytes() is the D7 CSPRNG.
+  variable_set('auth0_cookie_secret', drupal_hash_base64(drupal_random_bytes(32)));
+
+  return t('Generated a random auth0_cookie_secret.');
 }
 

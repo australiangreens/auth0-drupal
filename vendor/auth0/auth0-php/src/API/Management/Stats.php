@@ -10,19 +10,17 @@ use Auth0\SDK\Utility\Toolkit;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Class Stats.
  * Handles requests to the Stats endpoint of the v2 Management API.
  *
- * @link https://auth0.com/docs/api/management/v2#!/Stats
+ * @see https://auth0.com/docs/api/management/v2#!/Stats
  */
 final class Stats extends ManagementEndpoint implements StatsInterface
 {
     public function getActiveUsers(
-        ?RequestOptions $options = null
+        ?RequestOptions $options = null,
     ): ResponseInterface {
         return $this->getHttpClient()
-            ->method('get')
-            ->addPath('stats', 'active-users')
+            ->method('get')->addPath(['stats', 'active-users'])
             ->withOptions($options)
             ->call();
     }
@@ -30,15 +28,14 @@ final class Stats extends ManagementEndpoint implements StatsInterface
     public function getDaily(
         ?string $from = null,
         ?string $to = null,
-        ?RequestOptions $options = null
+        ?RequestOptions $options = null,
     ): ResponseInterface {
         [$from, $to] = Toolkit::filter([$from, $to])->string()->trim();
 
         $client = $this->getHttpClient()
-            ->method('get')
-            ->addPath('stats', 'daily');
+            ->method('get')->addPath(['stats', 'daily']);
 
-        if ($from !== null) {
+        if (null !== $from) {
             Toolkit::assert([
                 [$from, \Auth0\SDK\Exception\ArgumentException::missing('from')],
             ])->isString();
@@ -46,7 +43,7 @@ final class Stats extends ManagementEndpoint implements StatsInterface
             $client->withParam('from', $from);
         }
 
-        if ($to !== null) {
+        if (null !== $to) {
             Toolkit::assert([
                 [$to, \Auth0\SDK\Exception\ArgumentException::missing('to')],
             ])->isString();

@@ -4,33 +4,24 @@ declare(strict_types=1);
 
 namespace Auth0\SDK\Utility\Toolkit\Filter;
 
-/**
- * Class StringFilter.
- */
+use function is_string;
+
 final class StringFilter
 {
     /**
-     * Values to process.
-     *
-     * @var array<string|null>
-     */
-    private array $subjects;
-
-    /**
      * StringFilter constructor.
      *
-     * @param array<string|null> $subjects An array of string or null values.
+     * @param array<null|string> $subjects an array of string or null values
      */
     public function __construct(
-        array $subjects
+        private array $subjects,
     ) {
-        $this->subjects = $subjects;
     }
 
     /**
      * Nullsafe trim. Trims the array of string values, or sets their value when invalid or empty.
      *
-     * @return array<string|null>
+     * @return array<null|string>
      */
     public function trim(): array
     {
@@ -39,13 +30,15 @@ final class StringFilter
         foreach ($this->subjects as $subject) {
             if (! is_string($subject)) {
                 $results[] = null;
+
                 continue;
             }
 
             $value = trim($subject);
 
-            if (mb_strlen($value) === 0) {
+            if (0 === mb_strlen($value)) {
                 $results[] = null;
+
                 continue;
             }
 

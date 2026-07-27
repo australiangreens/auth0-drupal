@@ -10,10 +10,9 @@ use Auth0\SDK\Utility\Toolkit;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Class Emails.
  * Handles requests to the Emails endpoint of the v2 Management API.
  *
- * @link https://auth0.com/docs/api/management/v2#!/Emails
+ * @see https://auth0.com/docs/api/management/v2#!/Emails
  */
 final class Emails extends ManagementEndpoint implements EmailsInterface
 {
@@ -21,7 +20,7 @@ final class Emails extends ManagementEndpoint implements EmailsInterface
         string $name,
         array $credentials,
         ?array $body = null,
-        ?RequestOptions $options = null
+        ?RequestOptions $options = null,
     ): ResponseInterface {
         [$name] = Toolkit::filter([$name])->string()->trim();
         [$credentials, $body] = Toolkit::filter([$credentials, $body])->array()->trim();
@@ -37,24 +36,31 @@ final class Emails extends ManagementEndpoint implements EmailsInterface
         /** @var array<mixed> $body */
 
         return $this->getHttpClient()
-            ->method('post')
-            ->addPath('emails', 'provider')
+            ->method('post')->addPath(['emails', 'provider'])
             ->withBody(
-                (object) Toolkit::merge([
+                (object) Toolkit::merge([[
                     'name' => $name,
                     'credentials' => (object) $credentials,
-                ], $body)
+                ], $body]),
             )
             ->withOptions($options)
             ->call();
     }
 
-    public function getProvider(
-        ?RequestOptions $options = null
+    public function deleteProvider(
+        ?RequestOptions $options = null,
     ): ResponseInterface {
         return $this->getHttpClient()
-            ->method('get')
-            ->addPath('emails', 'provider')
+            ->method('delete')->addPath(['emails', 'provider'])
+            ->withOptions($options)
+            ->call();
+    }
+
+    public function getProvider(
+        ?RequestOptions $options = null,
+    ): ResponseInterface {
+        return $this->getHttpClient()
+            ->method('get')->addPath(['emails', 'provider'])
             ->withOptions($options)
             ->call();
     }
@@ -63,7 +69,7 @@ final class Emails extends ManagementEndpoint implements EmailsInterface
         string $name,
         array $credentials,
         ?array $body = null,
-        ?RequestOptions $options = null
+        ?RequestOptions $options = null,
     ): ResponseInterface {
         [$name] = Toolkit::filter([$name])->string()->trim();
         [$credentials, $body] = Toolkit::filter([$credentials, $body])->array()->trim();
@@ -79,24 +85,13 @@ final class Emails extends ManagementEndpoint implements EmailsInterface
         /** @var array<mixed> $body */
 
         return $this->getHttpClient()
-            ->method('patch')
-            ->addPath('emails', 'provider')
+            ->method('patch')->addPath(['emails', 'provider'])
             ->withBody(
-                (object) Toolkit::merge([
+                (object) Toolkit::merge([[
                     'name' => $name,
                     'credentials' => (object) $credentials,
-                ], $body)
+                ], $body]),
             )
-            ->withOptions($options)
-            ->call();
-    }
-
-    public function deleteProvider(
-        ?RequestOptions $options = null
-    ): ResponseInterface {
-        return $this->getHttpClient()
-            ->method('delete')
-            ->addPath('emails', 'provider')
             ->withOptions($options)
             ->call();
     }

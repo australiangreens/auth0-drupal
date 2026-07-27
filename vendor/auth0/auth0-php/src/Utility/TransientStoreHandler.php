@@ -5,26 +5,79 @@ declare(strict_types=1);
 namespace Auth0\SDK\Utility;
 
 use Auth0\SDK\Contract\StoreInterface;
+use Exception;
 
-/**
- * Class TransientStoreHandler
- */
 final class TransientStoreHandler
 {
     /**
-     * Storage method to use.
-     */
-    private StoreInterface $store;
-
-    /**
      * TransientStoreHandler constructor.
      *
-     * @param StoreInterface $store Storage method to use.
+     * @param StoreInterface $store storage method to use
      */
     public function __construct(
-        StoreInterface $store
+        private StoreInterface $store,
     ) {
-        $this->store = $store;
+    }
+
+    /**
+     * Defer saving state changes to destination to improve performance during blocks of changes.
+     *
+     * @param bool $deferring whether to defer persisting the storage state
+     *
+     * @codeCoverageIgnore
+     */
+    public function defer(
+        bool $deferring,
+    ): void {
+        $this->getStore()->defer($deferring);
+    }
+
+    /**
+     * Delete a stored value from storage.
+     *
+     * @param string $key key to get and delete
+     */
+    public function delete(
+        string $key,
+    ): void {
+        $this->store->delete($key);
+    }
+
+    /**
+     * Generate a random nonce value.
+     *
+     * @param int $length length of the generated value, in bytes
+     *
+     * @codeCoverageIgnore
+     */
+    public function getNonce(
+        int $length = 16,
+    ): string {
+        $length = $length >= 1 ? $length : 1;
+
+        try {
+            $randomBytes = random_bytes($length);
+        } catch (Exception) {
+            $randomBytes = openssl_random_pseudo_bytes($length);
+        }
+
+        return bin2hex($randomBytes);
+    }
+
+    /**
+     * Get a value and delete it from storage.
+     *
+     * @param string $key key to get and delete
+     */
+    public function getOnce(
+        string $key,
+    ): ?string {
+        /** @var null|int|string $value */
+        $value = $this->store->get($key, null);
+
+        $this->store->delete($key);
+
+        return null !== $value ? (string) $value : null;
     }
 
     /**
@@ -36,113 +89,53 @@ final class TransientStoreHandler
     }
 
     /**
-     * Defer saving state changes to destination to improve performance during blocks of changes.
+     * Check if a key has a stored value or not.
      *
-     * @param bool $deferring Whether to defer persisting the storage state.
-     *
-     * @codeCoverageIgnore
+     * @param string $key key to check
      */
-    public function defer(
-        bool $deferring
-    ): void {
-        $this->getStore()->defer($deferring);
-    }
-
-    /**
-     * Store a value for a specific key.
-     *
-     * @param string $key   Key to use.
-     * @param string $value Value to store.
-     */
-    public function store(
+    public function isset(
         string $key,
-        string $value
-    ): void {
-        $this->store->set($key, $value);
+    ): bool {
+        return null !== $this->store->get($key);
     }
 
     /**
      * Generate and store a random nonce value for a key.
      *
-     * @param string $key Key to use.
+     * @param string $key key to use
      */
     public function issue(
-        string $key
+        string $key,
     ): string {
         $nonce = $this->getNonce();
         $this->store($key, $nonce);
+
         return $nonce;
     }
 
     /**
-     * Check if a key has a stored value or not.
+     * Store a value for a specific key.
      *
-     * @param string $key Key to check.
+     * @param string $key   key to use
+     * @param string $value value to store
      */
-    public function isset(
-        string $key
-    ): bool {
-        return ! is_null($this->store->get($key));
-    }
-
-    /**
-     * Delete a stored value from storage.
-     *
-     * @param string $key Key to get and delete.
-     */
-    public function delete(
-        string $key
+    public function store(
+        string $key,
+        string $value,
     ): void {
-        $this->store->delete($key);
-    }
-
-    /**
-     * Get a value and delete it from storage.
-     *
-     * @param string $key Key to get and delete.
-     */
-    public function getOnce(
-        string $key
-    ): ?string {
-        /** @var int|string|null $value */
-        $value = $this->store->get($key, null);
-
-        $this->store->delete($key);
-
-        return $value !== null ? (string) $value : null;
+        $this->store->set($key, $value);
     }
 
     /**
      * Get a value once and check that it matches an existing value.
      *
-     * @param string $key      Key to get once.
-     * @param string $expected Value expected.
+     * @param string $key      key to get once
+     * @param string $expected value expected
      */
     public function verify(
         string $key,
-        string $expected
+        string $expected,
     ): bool {
         return $this->getOnce($key) === $expected;
-    }
-
-    /**
-     * Generate a random nonce value.
-     *
-     * @param int $length Length of the generated value, in bytes.
-     *
-     * @codeCoverageIgnore
-     */
-    private function getNonce(
-        int $length = 16
-    ): string {
-        $length = $length >= 1 ? $length : 1;
-
-        try {
-            $randomBytes = random_bytes($length);
-        } catch (\Exception $exception) {
-            $randomBytes = (string) openssl_random_pseudo_bytes($length);
-        }
-
-        return bin2hex($randomBytes);
     }
 }

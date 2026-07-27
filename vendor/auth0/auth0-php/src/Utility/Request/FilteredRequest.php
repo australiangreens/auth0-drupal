@@ -4,48 +4,40 @@ declare(strict_types=1);
 
 namespace Auth0\SDK\Utility\Request;
 
-/**
- * Class FilteredRequest.
- */
+use function count;
+
 final class FilteredRequest
 {
     /**
-     * Fields to include or exclude from API responses.
+     * FilteredRequest constructor.
      *
-     * @var array<string>
-     */
-    private ?array $fields = null;
-
-    /**
-     * True to include $fields, false to exclude $fields.
-     */
-    private ?bool $includeFields = null;
-
-    /**
-     * FilteredRequest constructor
-     *
-     * @param array<string>|null $fields        Fields to include or exclude from API responses.
-     * @param bool|null          $includeFields True to include $fields, false to exclude $fields.
+     * @param null|array<string> $fields        fields to include or exclude from API responses
+     * @param null|bool          $includeFields true to include $fields, false to exclude $fields
      */
     public function __construct(
-        ?array $fields = null,
-        ?bool $includeFields = null
+        private ?array $fields = null,
+        private ?bool $includeFields = null,
     ) {
-        $this->fields = $fields;
-        $this->includeFields = $includeFields;
     }
 
     /**
-     * Set the `fields` for the filtered request.
+     * Return an array representing the field-filtered request.
      *
-     * @param array<string> $fields Value of `fields` parameter for the filtered request.
+     * @return array<int|string>
      */
-    public function setFields(
-        array $fields
-    ): self {
-        $this->fields = $fields;
+    public function build(): array
+    {
+        $response = [];
 
-        return $this;
+        if (null !== $this->fields && count($this->fields) >= 1) {
+            $response['fields'] = implode(',', array_unique(array_values($this->fields)));
+
+            if (null !== $this->includeFields) {
+                $response['include_fields'] = $this->includeFields ? 'true' : 'false';
+            }
+        }
+
+        return $response;
     }
 
     /**
@@ -61,24 +53,11 @@ final class FilteredRequest
     /**
      * Retrieve the `fields` for the filtered request.
      *
-     * @return array<string>|null
+     * @return null|array<string>
      */
     public function getFields(): ?array
     {
         return $this->fields;
-    }
-
-    /**
-     * Set the `include_fields` for the paginated request.
-     *
-     * @param ?bool $includeFields Value of `include_fields` parameter for the filtered request.
-     */
-    public function setIncludeFields(
-        ?bool $includeFields
-    ): self {
-        $this->includeFields = $includeFields;
-
-        return $this;
     }
 
     /**
@@ -90,22 +69,28 @@ final class FilteredRequest
     }
 
     /**
-     * Return an array representing the field-filtered request.
+     * Set the `fields` for the filtered request.
      *
-     * @return array<int|string>
+     * @param array<string> $fields value of `fields` parameter for the filtered request
      */
-    public function build(): array
-    {
-        $response = [];
+    public function setFields(
+        array $fields,
+    ): self {
+        $this->fields = $fields;
 
-        if ($this->fields !== null && count($this->fields) >= 1) {
-            $response['fields'] = implode(',', array_unique(array_values($this->fields)));
+        return $this;
+    }
 
-            if ($this->includeFields !== null) {
-                $response['include_fields'] = $this->includeFields ? 'true' : 'false';
-            }
-        }
+    /**
+     * Set the `include_fields` for the paginated request.
+     *
+     * @param ?bool $includeFields value of `include_fields` parameter for the filtered request
+     */
+    public function setIncludeFields(
+        ?bool $includeFields,
+    ): self {
+        $this->includeFields = $includeFields;
 
-        return $response;
+        return $this;
     }
 }

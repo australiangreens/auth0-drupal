@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace Auth0\SDK\Event\Psr14Store;
 
-use Auth0\SDK\Contract\Auth0Event;
-use Auth0\SDK\Contract\StoreInterface;
+use Auth0\SDK\Contract\{Auth0Event, StoreInterface};
 
 final class Get implements Auth0Event
 {
-    private StoreInterface $store;
     private ?bool $missed = null;
+
     private ?bool $success = null;
-    private string $key;
 
     /**
      * @var mixed
@@ -20,11 +18,19 @@ final class Get implements Auth0Event
     private $value;
 
     public function __construct(
-        StoreInterface $store,
-        string $key
+        private StoreInterface $store,
+        private string $key,
     ) {
-        $this->store = $store;
-        $this->key = $key;
+    }
+
+    public function getKey(): string
+    {
+        return $this->key;
+    }
+
+    public function getMissed(): ?bool
+    {
+        return $this->missed;
     }
 
     public function getStore(): StoreInterface
@@ -32,9 +38,9 @@ final class Get implements Auth0Event
         return $this->store;
     }
 
-    public function getKey(): string
+    public function getSuccess(): ?bool
     {
-        return $this->key;
+        return $this->success;
     }
 
     /**
@@ -45,37 +51,30 @@ final class Get implements Auth0Event
         return $this->value ?? null;
     }
 
+    public function setMissed(
+        bool $missed,
+    ): self {
+        $this->missed = $missed;
+
+        return $this;
+    }
+
+    public function setSuccess(
+        bool $success,
+    ): self {
+        $this->success = $success;
+
+        return $this;
+    }
+
     /**
      * @param mixed $value
      */
     public function setValue(
-        $value
+        $value,
     ): self {
         $this->value = $value;
-        return $this;
-    }
 
-    public function getMissed(): ?bool
-    {
-        return $this->missed;
-    }
-
-    public function setMissed(
-        bool $missed
-    ): self {
-        $this->missed = $missed;
-        return $this;
-    }
-
-    public function getSuccess(): ?bool
-    {
-        return $this->success;
-    }
-
-    public function setSuccess(
-        bool $success
-    ): self {
-        $this->success = $success;
         return $this;
     }
 }

@@ -128,7 +128,16 @@ function _auth0_sdk($redirect_uri = NULL) {
     $config['redirectUri'] = $redirect_uri;
   }
   $configuration = new SdkConfiguration($config);
-  $configuration->setTransientStorage(new SessionStore($configuration));
+
+  // Keep all SDK state in the PHP session rather than the SDK's default
+  // CookieStore. Matches the storage behaviour of the v5 SDK this module was
+  // built against, avoids pushing tokens into a client-side cookie, and takes
+  // the module out of scope of the CookieStore advisories (PKSA-w6j7,
+  // PKSA-3nzc). Note that SdkConfiguration::validateStateWebApp() still
+  // requires a cookie secret even when no cookie store is in play.
+  $configuration->setSessionStorage(new SessionStore($configuration, 'auth0_session'));
+  $configuration->setTransientStorage(new SessionStore($configuration, 'auth0_transient'));
+
   return new Auth0($configuration);
 }
 
@@ -225,13 +234,14 @@ function auth0_callback() {
     return drupal_goto();
   }
 
-  // Validate the ID Token — state validation is handled inside exchange() above.
-  try {
-    $user = $auth0->decode($id_token);
-  }
-  catch(\Exception $e) {
+  // exchange() has already verified the ID token's signature and validated its
+  // issuer, audience, state and nonce before populating the user, so there is
+  // no second decode() here. Repeating it would be weaker, not stronger: the
+  // nonce is consumed by the first decode, so a second call validates without
+  // it.
+  if (empty($id_token)) {
     drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-    watchdog('Auth0', 'Error validating the token: '.$e->getMessage(), array(), WATCHDOG_ERROR);
+    watchdog('Auth0', 'Auth0 returned no ID token for the authorization code', array(), WATCHDOG_ERROR);
     return drupal_goto();
   }
 
@@ -246,9 +256,9 @@ function auth0_callback() {
       $user_info['user_id'] = $user_info['sub'];
     }
 
-    if ($user_info['sub'] != $user->getSubject()) {
+    if (empty($user_info['sub'])) {
       drupal_set_message(t('There was a problem logging you in, sorry for the inconvenience.'), 'error');
-      watchdog('Auth0', 'Failed to verify JWT sub', array(), WATCHDOG_ERROR);
+      watchdog('Auth0', 'Verified ID token contained no subject claim', array(), WATCHDOG_ERROR);
       return drupal_goto();
     }
 
@@ -988,13 +998,28 @@ function _auth0_generate_authorize_url($prompt = FALSE) {
     drupal_session_start();
   }
 
-  $redirect_uri = url('auth0/callback', array('absolute' => TRUE, 'query' => drupal_get_destination()));
-  $auth0 = _auth0_sdk($redirect_uri);
+  // Callers may supply their own redirect URI (the Lock template and the SSO
+  // path both do); only fall back to the default callback when they do not.
+  $params = is_array($prompt) ? $prompt : array();
 
-  $params = [];
-  if (is_array($prompt) && isset($prompt['prompt'])) {
-    $params['prompt'] = $prompt['prompt'];
+  if (!empty($params['redirect_uri'])) {
+    $redirect_uri = $params['redirect_uri'];
   }
+  else {
+    $redirect_uri = url('auth0/callback', array('absolute' => TRUE, 'query' => drupal_get_destination()));
+  }
+
+  // These are configuration, not authorization request parameters, and the v8
+  // SDK derives them from the SdkConfiguration instead.
+  unset($params['redirect_uri'], $params['response_type'], $params['scope'], $params['state']);
+
+  // A NULL connection is meaningless to the authorize endpoint and the v5 SDK
+  // stripped it; passing it through would send "connection=" on the query.
+  if (array_key_exists('connection', $params) && $params['connection'] === NULL) {
+    unset($params['connection']);
+  }
+
+  $auth0 = _auth0_sdk($redirect_uri);
 
   return $auth0->login(NULL, $params);
 }
@@ -1044,7 +1069,12 @@ function template_preprocess_auth0_lock(&$vars) {
     drupal_session_start();
   }
   $auth0 = _auth0_sdk(url('auth0/callback', array('absolute' => TRUE)));
-  $transient_handler = new TransientStoreHandler(new SessionStore($auth0->configuration()));
+
+  // Issue the state and nonce through the SDK's own configured transient
+  // store, not a second store built here. exchange() verifies them against
+  // that instance, so any divergence in storage backend or key prefix silently
+  // breaks every Lock widget login.
+  $transient_handler = new TransientStoreHandler($auth0->configuration()->getTransientStorage());
   $vars['params']['auth']['params']['state'] = isset($vars['params']['auth']['params']['state']) ? $vars['params']['auth']['params']['state'] : $transient_handler->issue('state');
   $vars['params']['auth']['params']['nonce'] = isset($vars['params']['auth']['params']['nonce']) ? $vars['params']['auth']['params']['nonce'] : $transient_handler->issue('nonce');
 
@@ -1171,7 +1201,10 @@ function auth0_missing_dependencies_message() {
 function auth0_block_info() {
   $blocks['auth0_lock'] = array(
     'info' => t('Auth0 Lock widget'),
-    'cache' => DRUPAL_CACHE_GLOBAL,
+    // The rendered widget embeds a per-session state and nonce that the v8 SDK
+    // verifies on callback, so this block can never be shared between users or
+    // reused across requests.
+    'cache' => DRUPAL_NO_CACHE,
   );
   return $blocks;
 }
