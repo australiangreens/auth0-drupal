@@ -119,7 +119,13 @@ function _auth0_sdk($redirect_uri = NULL) {
     'domain'         => getDomain(),
     'clientId'       => variable_get('auth0_client_id', ''),
     'clientSecret'   => variable_get('auth0_client_secret', ''),
-    'cookieSecret'   => variable_get('auth0_cookie_secret', ''),
+    // Falling back to the site hash salt keeps a missing variable from taking
+    // the whole site down with requiresCookieSecret(): every SDK call site,
+    // including the login block rendered for anonymous users, throws without
+    // it. Safe as a default because both stores below are SessionStore - v8
+    // only uses cookieSecret to encrypt CookieStore payloads, so here it is
+    // validated but never applied.
+    'cookieSecret'   => variable_get('auth0_cookie_secret', '') ?: drupal_get_hash_salt(),
     'scope'          => ['openid', 'profile', 'email'],
     'persistUser'    => FALSE,
     'tokenAlgorithm' => variable_get('auth0_jwt_signature_alg', 'RS256'),
@@ -537,52 +543,31 @@ function auth0_pipeListToArray($mapping_list_txt, $make_item0_lowercase = FALSE)
  * we are modifying.
  */
 function auth0_authenticate_user($uid) {
-  // TEMPORARY INSTRUMENTATION - revert this commit once diagnosed.
-  // Testing whether drupal_save_session() is FALSE across the login, which
-  // would make both drupal_session_regenerate() and _drupal_session_write()
-  // return early: login runs, users.login updates, hook_user_login fires, but
-  // no cookie is issued and sessions.uid is never stamped.
-  error_log(sprintf('AUTH0 pre:  uid_arg=%s global_uid=%d sid=%s started=%d save=%d',
-    var_export($uid, TRUE), (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
-    (int) drupal_session_started(), (int) drupal_save_session()));
+  // Going straight to user_login_submit() skips the login form, and with it
+  // core's user_login_name_validate() check on account status. Without this
+  // guard a blocked account logs in successfully - session regenerated, cookie
+  // issued, hook_user_login fired - and only collapses on the next request,
+  // when _drupal_session_read() sees status != 1 and demotes it to anonymous.
+  $account = user_load($uid);
 
-  // Who can redirect out from under us? user_login_finalize() invokes these in
-  // order, and one of them is exiting before user_login_submit() returns.
-  error_log('AUTH0 hook_user_login implementors: '
-    . implode(',', module_implements('user_login')));
-  error_log('AUTH0 hook_exit implementors: '
-    . implode(',', module_implements('exit')));
+  if (!$account) {
+    watchdog('Auth0', 'Refusing login: no Drupal account for uid @uid', array('@uid' => $uid), WATCHDOG_ERROR);
+    return FALSE;
+  }
 
-  // Registered BEFORE the call that never returns, so it fires even on exit().
-  drupal_register_shutdown_function(function () {
-    error_log(sprintf('AUTH0 shutdown: uid=%d sid=%s started=%d save=%d',
-      (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
-      (int) drupal_session_started(), (int) drupal_save_session()));
-  });
+  if (empty($account->status)) {
+    drupal_set_message(
+      t('The account %name has not been activated or is blocked.', array('%name' => format_username($account))),
+      'error'
+    );
+    watchdog('Auth0', 'Refusing login for blocked account @uid', array('@uid' => $uid), WATCHDOG_WARNING);
+
+    return drupal_goto();
+  }
 
   $form_state['uid'] = $uid;
   user_login_submit(array(), $form_state);
-
-  error_log(sprintf('AUTH0 post: global_uid=%d roles=%s sid=%s started=%d save=%d',
-    (int) $GLOBALS['user']->uid,
-    implode(',', array_keys((array) $GLOBALS['user']->roles)),
-    session_id() ?: 'NONE', (int) drupal_session_started(),
-    (int) drupal_save_session()));
-
   return TRUE;
-}
-
-/**
- * Implements hook_user_login().
- *
- * TEMPORARY INSTRUMENTATION - revert with the rest. Runs inside
- * user_login_finalize()'s invoke loop, i.e. after drupal_session_regenerate(),
- * so a changed sid here proves regeneration ran.
- */
-function auth0_user_login(&$edit, $account) {
-  error_log(sprintf('AUTH0 user_login hook: acct_uid=%d global_uid=%d sid=%s started=%d save=%d',
-    (int) $account->uid, (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
-    (int) drupal_session_started(), (int) drupal_save_session()));
 }
 
 /**

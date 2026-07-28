@@ -39,6 +39,36 @@ function auth0_schema() {
 }
 
 /**
+ * Implements hook_install().
+ *
+ * hook_update_N() bodies never run on a fresh install - Drupal sets the schema
+ * version straight to the highest available update - so auth0_update_7201()
+ * alone leaves new sites without a cookie secret, and every SDK call site
+ * throws ConfigurationException::requiresCookieSecret() until an administrator
+ * saves the settings form.
+ */
+function auth0_install() {
+  _auth0_set_cookie_secret();
+}
+
+/**
+ * Generate and store a random cookie secret, unless one is already set.
+ *
+ * @return bool
+ *   TRUE if a secret was generated, FALSE if one was already present.
+ */
+function _auth0_set_cookie_secret() {
+  if (variable_get('auth0_cookie_secret', '') !== '') {
+    return FALSE;
+  }
+
+  // The SDK warns below 32 bytes; drupal_random_bytes() is the D7 CSPRNG.
+  variable_set('auth0_cookie_secret', drupal_hash_base64(drupal_random_bytes(32)));
+
+  return TRUE;
+}
+
+/**
  * Implements hook_uninstall().
  */
 function auth0_uninstall() {
@@ -62,14 +92,10 @@ function auth0_update_7201() {
   // rather than leaving it to an administrator closes the window between the
   // deployment and someone visiting the settings form, during which no user
   // could log in. Sites that pin the value in settings.php are left alone.
-  $existing = variable_get('auth0_cookie_secret', '');
-
-  if (!empty($existing)) {
+  // Covers upgrades in place; auth0_install() covers fresh installs.
+  if (!_auth0_set_cookie_secret()) {
     return t('auth0_cookie_secret is already set; left unchanged.');
   }
-
-  // The SDK warns below 32 bytes; drupal_random_bytes() is the D7 CSPRNG.
-  variable_set('auth0_cookie_secret', drupal_hash_base64(drupal_random_bytes(32)));
 
   return t('Generated a random auth0_cookie_secret.');
 }
