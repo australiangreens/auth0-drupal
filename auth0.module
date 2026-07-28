@@ -546,6 +546,20 @@ function auth0_authenticate_user($uid) {
     var_export($uid, TRUE), (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
     (int) drupal_session_started(), (int) drupal_save_session()));
 
+  // Who can redirect out from under us? user_login_finalize() invokes these in
+  // order, and one of them is exiting before user_login_submit() returns.
+  error_log('AUTH0 hook_user_login implementors: '
+    . implode(',', module_implements('user_login')));
+  error_log('AUTH0 hook_exit implementors: '
+    . implode(',', module_implements('exit')));
+
+  // Registered BEFORE the call that never returns, so it fires even on exit().
+  drupal_register_shutdown_function(function () {
+    error_log(sprintf('AUTH0 shutdown: uid=%d sid=%s started=%d save=%d',
+      (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
+      (int) drupal_session_started(), (int) drupal_save_session()));
+  });
+
   $form_state['uid'] = $uid;
   user_login_submit(array(), $form_state);
 
@@ -555,13 +569,20 @@ function auth0_authenticate_user($uid) {
     session_id() ?: 'NONE', (int) drupal_session_started(),
     (int) drupal_save_session()));
 
-  drupal_register_shutdown_function(function () {
-    error_log(sprintf('AUTH0 shutdown: uid=%d sid=%s save=%d',
-      (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
-      (int) drupal_save_session()));
-  });
-
   return TRUE;
+}
+
+/**
+ * Implements hook_user_login().
+ *
+ * TEMPORARY INSTRUMENTATION - revert with the rest. Runs inside
+ * user_login_finalize()'s invoke loop, i.e. after drupal_session_regenerate(),
+ * so a changed sid here proves regeneration ran.
+ */
+function auth0_user_login(&$edit, $account) {
+  error_log(sprintf('AUTH0 user_login hook: acct_uid=%d global_uid=%d sid=%s started=%d save=%d',
+    (int) $account->uid, (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
+    (int) drupal_session_started(), (int) drupal_save_session()));
 }
 
 /**
