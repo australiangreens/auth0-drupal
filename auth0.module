@@ -537,8 +537,30 @@ function auth0_pipeListToArray($mapping_list_txt, $make_item0_lowercase = FALSE)
  * we are modifying.
  */
 function auth0_authenticate_user($uid) {
+  // TEMPORARY INSTRUMENTATION - revert this commit once diagnosed.
+  // Testing whether drupal_save_session() is FALSE across the login, which
+  // would make both drupal_session_regenerate() and _drupal_session_write()
+  // return early: login runs, users.login updates, hook_user_login fires, but
+  // no cookie is issued and sessions.uid is never stamped.
+  error_log(sprintf('AUTH0 pre:  uid_arg=%s global_uid=%d sid=%s started=%d save=%d',
+    var_export($uid, TRUE), (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
+    (int) drupal_session_started(), (int) drupal_save_session()));
+
   $form_state['uid'] = $uid;
   user_login_submit(array(), $form_state);
+
+  error_log(sprintf('AUTH0 post: global_uid=%d roles=%s sid=%s started=%d save=%d',
+    (int) $GLOBALS['user']->uid,
+    implode(',', array_keys((array) $GLOBALS['user']->roles)),
+    session_id() ?: 'NONE', (int) drupal_session_started(),
+    (int) drupal_save_session()));
+
+  drupal_register_shutdown_function(function () {
+    error_log(sprintf('AUTH0 shutdown: uid=%d sid=%s save=%d',
+      (int) $GLOBALS['user']->uid, session_id() ?: 'NONE',
+      (int) drupal_save_session()));
+  });
+
   return TRUE;
 }
 
