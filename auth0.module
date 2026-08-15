@@ -259,23 +259,40 @@ function auth0_user_presave(\Drupal\Core\Entity\EntityInterface $account) {
         \Drupal::messenger()->addStatus(t('The account has been created in Auth0.'));
 
         try {
-          // Send a Link for a passwordless login
-          $urlObject = new Url('auth0.callback', [
-            'destination' => \Drupal::config('system.site')->get('page.front'),
-          ]);
-          $urlObject->setAbsolute(TRUE);
-          $authParams = [
-            'redirect_uri' => $urlObject->toString(),
-            'response_type' => 'code'
-          ];
+          // ADR-005 / IDAM-23 (C1): password-set ticket, replacing the
+          // passwordless magic-link flow. The magic-link flow does not
+          // complete for server-triggered signups like this one — its OAuth
+          // `state` is bound to *this* request's PHP session, not the new
+          // user's browser, so the exchange always fails downstream in
+          // auth0.callback with "Invalid state" (see HANDOFF.md Q1 /
+          // IDAM-26). dbconnections/change_password is the same mechanism
+          // "forgot password" already uses reliably — browser-initiated
+          // end to end, no server-side session for the state to mismatch.
+          //
+          // Unlike emailPasswordlessStart, this call has no redirect_uri
+          // parameter — where the user lands after setting their password is
+          // controlled by the tenant's Change Password email template /
+          // Auth0-hosted result page, not per-call. Confirm that's configured
+          // as intended (see IDAM-23 step 1, email template review) before
+          // relying on this in prod.
+          $response = $auth0->authentication()->dbConnectionsChangePassword($account->getEmail(), $connection);
 
-          $auth0->authentication()->emailPasswordlessStart($account->getEmail(), 'link', $authParams);
+          // dbConnectionsChangePassword returns the raw HTTP response and
+          // does NOT throw on a non-2xx status (unlike managementClient
+          // calls elsewhere in this function) — an API-level rejection would
+          // otherwise be silently treated as success.
+          if ($response->getStatusCode() >= 400) {
+            throw new \Exception(
+              'dbconnections/change_password returned ' . $response->getStatusCode()
+              . ': ' . $response->getBody()->getContents()
+            );
+          }
 
-          \Drupal::messenger()->addStatus(t('An Email with a one-time link has been sent.'));
+          \Drupal::messenger()->addStatus(t('An email to set your password has been sent.'));
         }
         catch(\Exception $e) {
-          \Drupal::messenger()->addError(t('There was a problem sending the one-time link from Auth0.'));
-          \Drupal::logger('Auth0')->error('Error creating passwordless start: ' . $e->getMessage(), []);
+          \Drupal::messenger()->addError(t('There was a problem sending the password-set email from Auth0.'));
+          \Drupal::logger('Auth0')->error('Error starting dbconnections/change_password: ' . $e->getMessage(), []);
         }
       }
       catch (ClientException $e) {
